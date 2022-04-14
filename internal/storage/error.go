@@ -1,13 +1,13 @@
-package unknownID
+package storage
 
-func New(id int) error {
+func NewUnknownIDError(id string) error {
 	return &UnknownIDError{id}
 }
 
 type UnknownIDError struct {
-	id int
+	id string
 }
 
 func (e *UnknownIDError) Error() string {
-	return string(rune(e.id))
+	return e.id
 }

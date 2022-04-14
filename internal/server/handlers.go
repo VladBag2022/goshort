@@ -1,11 +1,11 @@
 package server
 
 import (
-	"github.com/VladBag2022/goshort/internal/storage/errors/unknownID"
+	"github.com/VladBag2022/goshort/internal/storage"
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
+	"strings"
 )
 
 func (s *Server) root(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +36,7 @@ func (s *Server) shorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := s.repository.Shorten(r.Context(), *origin)
+	id, err := s.repository.Shorten(r.Context(), origin)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -44,25 +44,19 @@ func (s *Server) shorten(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(shortURL.Result.String()))
+	w.Write([]byte(id))
 }
 
 func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
-	param := r.URL.Query().Get("id")
-	if param == "" {
+	id := strings.TrimPrefix(r.URL.Path, "/")
+	if id == "" {
 		http.Error(w, "The id parameter is missing", http.StatusBadRequest)
 		return
 	}
 
-	id, err := strconv.Atoi(param)
+	origin, err := s.repository.Restore(r.Context(), id)
 	if err != nil {
-		http.Error(w, "The id parameter is not an integer", http.StatusBadRequest)
-		return
-	}
-
-	shortURL, err := s.repository.Restore(r.Context(), id)
-	if err != nil {
-		if _, ok := err.(*unknownID.UnknownIDError); ok {
+		if _, ok := err.(*storage.UnknownIDError); ok {
 			http.Error(w, "Unknown id", http.StatusBadRequest)
 			return
 		}
@@ -70,6 +64,6 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Location", shortURL.Origin.String())
+	w.Header().Set("Location", origin.String())
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }

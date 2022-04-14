@@ -8,11 +8,11 @@ import (
 type Repository interface {
 	Shorten(
 		ctx context.Context,
-		origin url.URL,
-	) (*ShortURL, error)
+		origin *url.URL,
+	) (string, error)
 
 	Restore(
 		ctx context.Context,
-		id int,
-	) (*ShortURL, error)
+		id string,
+	) (*url.URL, error)
 }
