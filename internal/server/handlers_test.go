@@ -78,6 +78,8 @@ func TestServer_shorten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, content := testRequest(t, ts, http.MethodPost, "/", strings.NewReader(tt.content))
+			err := response.Body.Close()
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)
 			assert.Equal(t, tt.want.contentType, response.Header.Get("Content-Type"))
@@ -139,6 +141,9 @@ func TestServer_restore(t *testing.T) {
 			t.Logf("Request: %s", requestURL)
 
 			response, content := testRequest(t, ts, http.MethodGet, requestURL, nil)
+			err = response.Body.Close()
+			require.NoError(t, err)
+
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)
 			if tt.sameID {
 				assert.Equal(t, tt.want.location, response.Header.Get("Location"))
