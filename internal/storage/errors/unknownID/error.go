@@ -1,4 +1,4 @@
-package unknown_id
+package unknownID
 
 func New(id int) error {
 	return &UnknownIDError{id}

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/VladBag2022/goshort/internal/storage/errors/unknown_id"
+	"github.com/VladBag2022/goshort/internal/storage/errors/unknownID"
 	"io"
 	"net/http"
 	"net/url"
@@ -62,7 +62,7 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 
 	shortURL, err := s.repository.Restore(r.Context(), id)
 	if err != nil {
-		if _, ok := err.(*unknown_id.UnknownIDError); ok {
+		if _, ok := err.(*unknownID.UnknownIDError); ok {
 			http.Error(w, "Unknown id", http.StatusBadRequest)
 			return
 		}
