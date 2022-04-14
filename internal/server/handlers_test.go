@@ -124,6 +124,11 @@ func TestServer_restore(t *testing.T) {
 			if tt.sameID {
 				assert.Equal(t, tt.want.location, result.Header.Get("Location"))
 			}
+
+			_, err = ioutil.ReadAll(result.Body)
+			require.NoError(t, err)
+			err = result.Body.Close()
+			require.NoError(t, err)
 		})
 	}
 }
