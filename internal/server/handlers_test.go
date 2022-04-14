@@ -6,6 +6,7 @@ import (
 	"github.com/VladBag2022/goshort/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,26 @@ import (
 	"strings"
 	"testing"
 )
+
+func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, body)
+	require.NoError(t, err)
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+	return resp, string(respBody)
+}
 
 func TestServer_shorten(t *testing.T) {
 	type want struct {
@@ -45,26 +66,20 @@ func TestServer_shorten(t *testing.T) {
 		},
 	}
 
-	r := storage.NewMemoryRepository(shortener.Shorten)
-	s := New(r, "localhost", 8080)
+	mem := storage.NewMemoryRepository(shortener.Shorten)
+	s := New(mem, "localhost", 8080)
+
+	r := router(&s)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.content))
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(shortenHandler(&s))
-			h.ServeHTTP(w, request)
-			result := w.Result()
+			response, body := testRequest(t, ts, http.MethodPost, "/", strings.NewReader(tt.content))
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
-
-			userResult, err := ioutil.ReadAll(result.Body)
-			require.NoError(t, err)
-			err = result.Body.Close()
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.want.response, len(userResult) > 0)
+			assert.Equal(t, tt.want.statusCode, response.StatusCode)
+			assert.Equal(t, tt.want.contentType, response.Header.Get("Content-Type"))
+			assert.Equal(t, tt.want.response, len(body) > 0)
 		})
 	}
 }
@@ -101,34 +116,33 @@ func TestServer_restore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := storage.NewMemoryRepository(shortener.Shorten)
+			mem := storage.NewMemoryRepository(shortener.Shorten)
+
 			u, err := url.Parse(tt.origin)
 			require.NoError(t, err)
-			id, err := r.Shorten(context.Background(), u)
+			id, err := mem.Shorten(context.Background(), u)
 			require.NoError(t, err)
-			s := New(r, "localhost", 8080)
+
+			s := New(mem, "localhost", 8080)
+			r := router(&s)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
 
 			requestURL := "/" + id
 			if !tt.sameID {
-				requestURL += "444"
+				requestURL += "GARBAGE"
 			}
 
-			request := httptest.NewRequest(http.MethodGet, requestURL, nil)
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(restoreHandler(&s))
-			h.ServeHTTP(w, request)
-			result := w.Result()
+			t.Logf("ID: %s", id)
+			t.Logf("Request: %s", requestURL)
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-
+			response, body := testRequest(t, ts, http.MethodGet, requestURL, nil)
+			assert.Equal(t, tt.want.statusCode, response.StatusCode)
 			if tt.sameID {
-				assert.Equal(t, tt.want.location, result.Header.Get("Location"))
+				assert.Equal(t, tt.want.location, response.Header.Get("Location"))
 			}
 
-			_, err = ioutil.ReadAll(result.Body)
-			require.NoError(t, err)
-			err = result.Body.Close()
-			require.NoError(t, err)
+			t.Logf("Body: %s", body)
 		})
 	}
 }

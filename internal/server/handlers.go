@@ -9,13 +9,6 @@ import (
 	"net/url"
 )
 
-func router(s *Server) func (chi.Router) {
-	return func (r chi.Router) {
-		r.Get("/{id}", restoreHandler(s))
-		r.Post("/", shortenHandler(s))
-	}
-}
-
 func shortenHandler(s *Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -69,4 +62,8 @@ func restoreHandler(s *Server) http.HandlerFunc {
 		w.Header().Set("Location", origin.String())
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
+}
+
+func badRequestHandler(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "Bad request", http.StatusBadRequest)
 }
