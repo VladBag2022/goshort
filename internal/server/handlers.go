@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"github.com/VladBag2022/goshort/internal/storage"
 	"io"
 	"net/http"
@@ -44,7 +45,7 @@ func (s *Server) shorten(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(id))
+	w.Write([]byte(fmt.Sprintf("http://%s:%d/%s", s.host, s.port, id)))
 }
 
 func (s *Server) restore(w http.ResponseWriter, r *http.Request) {

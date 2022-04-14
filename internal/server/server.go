@@ -1,23 +1,30 @@
 package server
 
 import (
+	"fmt"
 	"github.com/VladBag2022/goshort/internal/storage"
 	"net/http"
 )
 
-func New(repository storage.Repository) Server {
-	return Server{repository}
+func New(repository storage.Repository, host string, port int) Server {
+	return Server{
+		repository: repository,
+		host: 		host,
+		port: 		port,
+	}
 }
 
 type Server struct {
-	repository storage.Repository
+	repository 	storage.Repository
+	host 		string
+	port 		int
 }
 
 func (s *Server) ListenAndServer() {
 	http.HandleFunc("/", s.root)
 
 	server := &http.Server{
-		Addr: "localhost:8080",
+		Addr: fmt.Sprintf("%s:%d", s.host, s.port),
 	}
 	server.ListenAndServe()
 }
