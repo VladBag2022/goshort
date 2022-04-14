@@ -3,25 +3,16 @@ package server
 import (
 	"fmt"
 	"github.com/VladBag2022/goshort/internal/storage"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
-func rootHandler(s *Server) http.HandlerFunc {
-	return func (w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			shortenHandler(s)(w, r)
-
-		case http.MethodGet:
-			restoreHandler(s)(w, r)
-
-		default:
-			http.Error(w, "Unsupported HTTP method", http.StatusBadRequest)
-			return
-		}
+func router(s *Server) func (chi.Router) {
+	return func (r chi.Router) {
+		r.Get("/{id}", restoreHandler(s))
+		r.Post("/", shortenHandler(s))
 	}
 }
 
@@ -59,7 +50,7 @@ func shortenHandler(s *Server) http.HandlerFunc {
 
 func restoreHandler(s *Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := strings.TrimPrefix(r.URL.Path, "/")
+		id := chi.URLParam(r, "id")
 		if id == "" {
 			http.Error(w, "The id parameter is missing", http.StatusBadRequest)
 			return
