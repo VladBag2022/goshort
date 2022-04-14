@@ -75,11 +75,11 @@ func TestServer_shorten(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response, body := testRequest(t, ts, http.MethodPost, "/", strings.NewReader(tt.content))
+			response, content := testRequest(t, ts, http.MethodPost, "/", strings.NewReader(tt.content))
 
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)
 			assert.Equal(t, tt.want.contentType, response.Header.Get("Content-Type"))
-			assert.Equal(t, tt.want.response, len(body) > 0)
+			assert.Equal(t, tt.want.response, len(content) > 0)
 		})
 	}
 }
@@ -136,13 +136,13 @@ func TestServer_restore(t *testing.T) {
 			t.Logf("ID: %s", id)
 			t.Logf("Request: %s", requestURL)
 
-			response, body := testRequest(t, ts, http.MethodGet, requestURL, nil)
+			response, content := testRequest(t, ts, http.MethodGet, requestURL, nil)
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)
 			if tt.sameID {
 				assert.Equal(t, tt.want.location, response.Header.Get("Location"))
 			}
 
-			t.Logf("Body: %s", body)
+			t.Logf("Body: %s", content)
 		})
 	}
 }
