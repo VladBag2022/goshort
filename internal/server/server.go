@@ -21,7 +21,7 @@ type Server struct {
 }
 
 func (s *Server) ListenAndServer() {
-	http.HandleFunc("/", s.root)
+	http.HandleFunc("/", rootHandler(s))
 
 	server := &http.Server{
 		Addr: fmt.Sprintf("%s:%d", s.host, s.port),
