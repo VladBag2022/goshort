@@ -2,9 +2,10 @@ package server
 
 import (
 	"fmt"
-	"github.com/VladBag2022/goshort/internal/storage"
 	"log"
 	"net/http"
+
+	"github.com/VladBag2022/goshort/internal/storage"
 )
 
 func New(repository storage.Repository, host string, port int) Server {

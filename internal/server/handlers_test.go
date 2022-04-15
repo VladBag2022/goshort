@@ -2,10 +2,6 @@ package server
 
 import (
 	"context"
-	"github.com/VladBag2022/goshort/internal/shortener"
-	"github.com/VladBag2022/goshort/internal/storage"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -13,6 +9,12 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/VladBag2022/goshort/internal/shortener"
+	"github.com/VladBag2022/goshort/internal/storage"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {

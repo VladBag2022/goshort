@@ -2,11 +2,13 @@ package server
 
 import (
 	"fmt"
-	"github.com/VladBag2022/goshort/internal/storage"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/VladBag2022/goshort/internal/storage"
 )
 
 func shortenHandler(s *Server) http.HandlerFunc {
