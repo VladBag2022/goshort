@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/VladBag2022/goshort/internal/storage"
@@ -23,8 +22,8 @@ type Server struct {
 }
 
 func (s *Server) ListenAndServer() {
-	log.Fatal(
-		http.ListenAndServe(
-			fmt.Sprintf("%s:%d", s.host, s.port),
-			router(s)))
+	err := http.ListenAndServe(fmt.Sprintf("%s:%d", s.host, s.port), router(s))
+	if err != nil {
+		return 
+	}
 }
