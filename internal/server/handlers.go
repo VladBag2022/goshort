@@ -13,11 +13,11 @@ import (
 )
 
 type ShortenAPIRequest struct {
-	Url string `json:"url"`
+	Origin string `json:"url"`
 }
 
 type ShortenAPIResponse struct {
-	Url string `json:"result"`
+	Result string `json:"result"`
 }
 
 func shortenHandler(s *Server) http.HandlerFunc {
@@ -66,12 +66,12 @@ func shortenAPIHandler(s *Server) http.HandlerFunc {
 			return
 		}
 
-		if len(request.Url) == 0 {
+		if len(request.Origin) == 0 {
 			http.Error(w, "URL was not provided", http.StatusBadRequest)
 			return
 		}
 
-		origin, err := url.Parse(request.Url)
+		origin, err := url.Parse(request.Origin)
 		if err != nil{
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -84,7 +84,7 @@ func shortenAPIHandler(s *Server) http.HandlerFunc {
 		}
 
 		response := ShortenAPIResponse{
-			Url: fmt.Sprintf("http://%s:%d/%s", s.host, s.port, id),
+			Result: fmt.Sprintf("http://%s:%d/%s", s.host, s.port, id),
 		}
 		responseBytes, err := json.Marshal(&response)
 		if err != nil {
