@@ -90,6 +90,57 @@ func TestServer_shorten(t *testing.T) {
 	}
 }
 
+func TestServer_api_shorten(t *testing.T) {
+	type want struct {
+		contentType string
+		statusCode  int
+		response 	bool
+	}
+	tests := []struct {
+		name    string
+		content string
+		want want
+	}{
+		{
+			name: 		"positive test",
+			content: 	"{\"url\":\"https://example.com\"}",
+			want: want{
+				contentType: 	"application/json",
+				statusCode: 	201,
+				response: 		true,
+			},
+		},
+		{
+			name: 		"negative test",
+			content: 	"{\"link\":\"https://example.com\"}",
+			want: want{
+				contentType: 	"text/plain; charset=utf-8",
+				statusCode: 	400,
+				response: 		true,
+			},
+		},
+	}
+
+	mem := storage.NewMemoryRepository(shortener.Shorten)
+	s := New(mem, "localhost", 8080)
+
+	r := router(&s)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, content := testRequest(t, ts, http.MethodPost, "/api/shorten", strings.NewReader(tt.content))
+			err := response.Body.Close()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.statusCode, response.StatusCode)
+			assert.Equal(t, tt.want.contentType, response.Header.Get("Content-Type"))
+			assert.Equal(t, tt.want.response, len(content) > 0)
+		})
+	}
+}
+
 func TestServer_restore(t *testing.T) {
 	type want struct {
 		location    string

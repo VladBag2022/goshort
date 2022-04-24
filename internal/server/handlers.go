@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,14 @@ import (
 
 	"github.com/VladBag2022/goshort/internal/storage"
 )
+
+type ShortenAPIRequest struct {
+	Url string `json:"url"`
+}
+
+type ShortenAPIResponse struct {
+	Url string `json:"result"`
+}
 
 func shortenHandler(s *Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
@@ -21,7 +30,7 @@ func shortenHandler(s *Server) http.HandlerFunc {
 
 		content := string(body)
 		if len(content) == 0 {
-			http.Error(w, "Post data should be null", http.StatusBadRequest)
+			http.Error(w, "Post data should not be null", http.StatusBadRequest)
 			return
 		}
 
@@ -40,6 +49,52 @@ func shortenHandler(s *Server) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(fmt.Sprintf("http://%s:%d/%s", s.host, s.port, id)))
+	}
+}
+
+func shortenAPIHandler(s *Server) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var request ShortenAPIRequest
+		if err = json.Unmarshal(body, &request); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if len(request.Url) == 0 {
+			http.Error(w, "URL was not provided", http.StatusBadRequest)
+			return
+		}
+
+		origin, err := url.Parse(request.Url)
+		if err != nil{
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		id, err := s.repository.Shorten(r.Context(), origin)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := ShortenAPIResponse{
+			Url: fmt.Sprintf("http://%s:%d/%s", s.host, s.port, id),
+		}
+		responseBytes, err := json.Marshal(&response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
 	}
 }
 
