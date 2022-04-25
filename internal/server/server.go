@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/VladBag2022/goshort/internal/storage"
@@ -20,7 +19,7 @@ func NewServer(repository storage.Repository, config Config) Server {
 }
 
 func (s *Server) ListenAndServer() {
-	err := http.ListenAndServe(fmt.Sprintf("%s:%d", s.config.Host, s.config.Port), router(s))
+	err := http.ListenAndServe(s.config.Address, router(s))
 	if err != nil {
 		return 
 	}

@@ -6,8 +6,7 @@ import (
 )
 
 type Config struct {
-	Host 	string 	`env:"SERVER_ADDRESS" envDefault:"localhost"`
-	Port 	int		`envDefault:"8080"`
+	Address string 	`env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
 	BaseURL string	`env:"BASE_URL"`
 }
 
@@ -17,11 +16,7 @@ func NewConfig() (Config, error) {
 		return config, err
 	}
 	if len(config.BaseURL) == 0 {
-		if config.Port != 80 {
-			config.BaseURL = fmt.Sprintf("http://%s:%d", config.Host, config.Port)
-		} else {
-			config.BaseURL = fmt.Sprintf("http://%s", config.Host)
-		}
+		config.BaseURL = fmt.Sprintf("http://%s", config.Address)
 	}
 	if config.BaseURL[len(config.BaseURL)-1:] == "/" {
 		config.BaseURL = config.BaseURL[:len(config.BaseURL)-1]
