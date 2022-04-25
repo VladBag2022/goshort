@@ -72,7 +72,7 @@ func TestServer_shorten(t *testing.T) {
 
 	mem := storage.NewMemoryRepository(shortener.Shorten)
 	c, err := NewConfig()
-	if err != nil{
+	if err != nil {
 		require.NoError(t, err)
 	}
 	s := NewServer(mem, c)

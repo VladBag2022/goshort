@@ -8,10 +8,10 @@ import (
 
 type Server struct {
 	repository storage.Repository
-	config     Config
+	config     *Config
 }
 
-func NewServer(repository storage.Repository, config Config) Server {
+func NewServer(repository storage.Repository, config *Config) Server {
 	return Server{
 		repository: repository,
 		config:     config,
