@@ -7,22 +7,20 @@ import (
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
-func New(repository storage.Repository, host string, port int) Server {
+type Server struct {
+	repository storage.Repository
+	config     Config
+}
+
+func NewServer(repository storage.Repository, config Config) Server {
 	return Server{
 		repository: repository,
-		host: 		host,
-		port: 		port,
+		config:     config,
 	}
 }
 
-type Server struct {
-	repository 	storage.Repository
-	host 		string
-	port 		int
-}
-
 func (s *Server) ListenAndServer() {
-	err := http.ListenAndServe(fmt.Sprintf("%s:%d", s.host, s.port), router(s))
+	err := http.ListenAndServe(fmt.Sprintf("%s:%d", s.config.Host, s.config.Port), router(s))
 	if err != nil {
 		return 
 	}

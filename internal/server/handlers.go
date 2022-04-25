@@ -48,7 +48,7 @@ func shortenHandler(s *Server) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(fmt.Sprintf("http://%s:%d/%s", s.host, s.port, id)))
+		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, id)))
 	}
 }
 
@@ -84,7 +84,7 @@ func shortenAPIHandler(s *Server) http.HandlerFunc {
 		}
 
 		response := ShortenAPIResponse{
-			Result: fmt.Sprintf("http://%s:%d/%s", s.host, s.port, id),
+			Result: fmt.Sprintf("%s/%s", s.config.BaseURL, id),
 		}
 		responseBytes, err := json.Marshal(&response)
 		if err != nil {

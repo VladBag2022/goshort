@@ -71,7 +71,11 @@ func TestServer_shorten(t *testing.T) {
 	}
 
 	mem := storage.NewMemoryRepository(shortener.Shorten)
-	s := New(mem, "localhost", 8080)
+	c, err := NewConfig()
+	if err != nil{
+		require.NoError(t, err)
+	}
+	s := NewServer(mem, c)
 
 	r := router(&s)
 	ts := httptest.NewServer(r)
@@ -122,7 +126,11 @@ func TestServer_api_shorten(t *testing.T) {
 	}
 
 	mem := storage.NewMemoryRepository(shortener.Shorten)
-	s := New(mem, "localhost", 8080)
+	c, err := NewConfig()
+	if err != nil{
+		require.NoError(t, err)
+	}
+	s := NewServer(mem, c)
 
 	r := router(&s)
 	ts := httptest.NewServer(r)
@@ -180,7 +188,11 @@ func TestServer_restore(t *testing.T) {
 			id, err := mem.Shorten(context.Background(), u)
 			require.NoError(t, err)
 
-			s := New(mem, "localhost", 8080)
+			c, err := NewConfig()
+			if err != nil{
+				require.NoError(t, err)
+			}
+			s := NewServer(mem, c)
 			r := router(&s)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
