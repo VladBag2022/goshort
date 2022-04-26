@@ -63,7 +63,7 @@ func (c *CoolStorage) Load() ([]*CoolStorageRecord, error) {
 }
 
 func NewCoolStorageDumper(fileName string) (*coolStorageDumper, error) {
-	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0777)
+	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func NewCoolStorageDumper(fileName string) (*coolStorageDumper, error) {
 }
 
 func NewCoolStorageLoader(fileName string) (*coolStorageLoader, error) {
-	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
+	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
