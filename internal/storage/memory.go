@@ -59,7 +59,11 @@ func (m *MemoryRepository) Load(_ context.Context) error {
 		return err
 	}
 	for _, record := range records {
-		m.urls.Store(record.ID, record.Origin)
+		origin, err := url.Parse(record.Origin)
+		if err != nil {
+			continue
+		}
+		m.urls.Store(record.ID, origin)
 	}
 	return nil
 }
@@ -70,8 +74,9 @@ func (m *MemoryRepository) Dump(_ context.Context) error {
 	}
 	var records []*CoolStorageRecord
 	m.urls.Range(func(id, origin interface{}) bool {
+		originURL := origin.(*url.URL)
 		records = append(records, &CoolStorageRecord{
-			Origin: origin.(string),
+			Origin: originURL.String(),
 			ID: 	id.(string),
 		})
 		return true
