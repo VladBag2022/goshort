@@ -1,6 +1,7 @@
 package server
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,7 +23,20 @@ type ShortenAPIResponse struct {
 
 func shortenHandler(s *Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
+		var reader io.Reader
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			reader = gz
+			defer gz.Close()
+		} else {
+			reader = r.Body
+		}
+
+		body, err := io.ReadAll(reader)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -54,7 +68,20 @@ func shortenHandler(s *Server) http.HandlerFunc {
 
 func shortenAPIHandler(s *Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
+		var reader io.Reader
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			reader = gz
+			defer gz.Close()
+		} else {
+			reader = r.Body
+		}
+
+		body, err := io.ReadAll(reader)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -99,7 +126,7 @@ func shortenAPIHandler(s *Server) http.HandlerFunc {
 }
 
 func restoreHandler(s *Server) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {		
 		id := chi.URLParam(r, "id")
 		if id == "" {
 			http.Error(w, "The id parameter is missing", http.StatusBadRequest)
