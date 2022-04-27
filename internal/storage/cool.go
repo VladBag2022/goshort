@@ -11,49 +11,49 @@ type CoolStorageRecord struct {
 	ID     string	`json:"id"`
 }
 
-type coolStorageDumper struct {
+type coolStorageWriter struct {
 	file    *os.File
 	encoder *json.Encoder
 }
 
-type coolStorageLoader struct {
+type coolStorageReader struct {
 	file    *os.File
 	decoder *json.Decoder
 }
 
 type CoolStorage struct {
-	loader 	*coolStorageLoader
-	dumper  *coolStorageDumper
+	reader *coolStorageReader
+	writer *coolStorageWriter
 }
 
 func NewCoolStorage(fileName string) (*CoolStorage, error) {
-	loader, err := NewCoolStorageLoader(fileName)
+	reader, err := NewCoolStorageReader(fileName)
 	if err != nil {
 		return nil, err
 	}
-	dumper, err := NewCoolStorageDumper(fileName)
+	writer, err := NewCoolStorageWriter(fileName)
 	if err != nil {
 		return nil, err
 	}
 	return &CoolStorage{
-		loader: loader,
-		dumper: dumper,
+		reader: reader,
+		writer: writer,
 	}, nil
 }
 
-func (c *CoolStorage) Dump(records []*CoolStorageRecord) error {
+func (c *CoolStorage) PutRecords(records []*CoolStorageRecord) error {
 	for _, record := range records {
-		if err := c.dumper.Dump(record); err != nil {
+		if err := c.writer.PutRecord(record); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *CoolStorage) Load() ([]*CoolStorageRecord, error) {
+func (c *CoolStorage) FetchRecords() ([]*CoolStorageRecord, error) {
 	var records []*CoolStorageRecord
 	for {
-		record, err := c.loader.Load()
+		record, err := c.reader.FetchRecord()
 		if err != nil {
 			fmt.Println(err)
 			return records, nil
@@ -62,33 +62,33 @@ func (c *CoolStorage) Load() ([]*CoolStorageRecord, error) {
 	}
 }
 
-func NewCoolStorageDumper(fileName string) (*coolStorageDumper, error) {
+func NewCoolStorageWriter(fileName string) (*coolStorageWriter, error) {
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
-	return &coolStorageDumper{
+	return &coolStorageWriter{
 		file:    file,
 		encoder: json.NewEncoder(file),
 	}, nil
 }
 
-func NewCoolStorageLoader(fileName string) (*coolStorageLoader, error) {
+func NewCoolStorageReader(fileName string) (*coolStorageReader, error) {
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
-	return &coolStorageLoader{
+	return &coolStorageReader{
 		file:    file,
 		decoder: json.NewDecoder(file),
 	}, nil
 }
 
-func (c *coolStorageDumper) Dump(record *CoolStorageRecord) error {
+func (c *coolStorageWriter) PutRecord(record *CoolStorageRecord) error {
 	return c.encoder.Encode(&record)
 }
 
-func (c *coolStorageLoader) Load() (*CoolStorageRecord, error) {
+func (c *coolStorageReader) FetchRecord() (*CoolStorageRecord, error) {
 	record := &CoolStorageRecord{}
 	if err := c.decoder.Decode(&record); err != nil {
 		return nil, err
@@ -96,10 +96,10 @@ func (c *coolStorageLoader) Load() (*CoolStorageRecord, error) {
 	return record, nil
 }
 
-func (c *coolStorageDumper) Close() error {
+func (c *coolStorageWriter) Close() error {
 	return c.file.Close()
 }
 
-func (c *coolStorageLoader) Close() error {
+func (c *coolStorageReader) Close() error {
 	return c.file.Close()
 }

@@ -54,7 +54,7 @@ func (m *MemoryRepository) Load(_ context.Context) error {
 	if m.coolStorage == nil {
 		return NewNoCoolStorageError("MemoryRepository")
 	}
-	records, err := m.coolStorage.Load()
+	records, err := m.coolStorage.FetchRecords()
 	if err != nil {
 		return err
 	}
@@ -81,5 +81,5 @@ func (m *MemoryRepository) Dump(_ context.Context) error {
 		})
 		return true
 	})
-	return m.coolStorage.Dump(records)
+	return m.coolStorage.PutRecords(records)
 }
