@@ -126,7 +126,7 @@ func shortenAPIHandler(s *Server) http.HandlerFunc {
 }
 
 func restoreHandler(s *Server) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {		
+	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		if id == "" {
 			http.Error(w, "The id parameter is missing", http.StatusBadRequest)
