@@ -21,7 +21,7 @@ type ShortenAPIResponse struct {
 	Result string `json:"result"`
 }
 
-func shortenHandler(s *Server) http.HandlerFunc {
+func shortenHandler(s Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
 		var reader io.Reader
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
@@ -66,7 +66,7 @@ func shortenHandler(s *Server) http.HandlerFunc {
 	}
 }
 
-func shortenAPIHandler(s *Server) http.HandlerFunc {
+func shortenAPIHandler(s Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
 		var reader io.Reader
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
@@ -125,7 +125,7 @@ func shortenAPIHandler(s *Server) http.HandlerFunc {
 	}
 }
 
-func restoreHandler(s *Server) http.HandlerFunc {
+func restoreHandler(s Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		if id == "" {

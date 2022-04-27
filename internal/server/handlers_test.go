@@ -77,7 +77,7 @@ func TestServer_shorten(t *testing.T) {
 	}
 	s := NewServer(mem, c)
 
-	r := router(&s)
+	r := router(s)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -132,7 +132,7 @@ func TestServer_api_shorten(t *testing.T) {
 	}
 	s := NewServer(mem, c)
 
-	r := router(&s)
+	r := router(s)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -193,7 +193,7 @@ func TestServer_restore(t *testing.T) {
 				require.NoError(t, err)
 			}
 			s := NewServer(mem, c)
-			r := router(&s)
+			r := router(s)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
