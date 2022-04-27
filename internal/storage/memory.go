@@ -7,13 +7,22 @@ import (
 )
 
 type MemoryRepository struct {
-	urls      sync.Map
-	shortenFn func(*url.URL) (string, error)
+	urls      		sync.Map
+	shortenFn 		func(*url.URL) (string, error)
+	coolStorage		*CoolStorage
 }
 
 func NewMemoryRepository(shortenFn func(*url.URL) (string, error)) *MemoryRepository {
 	return &MemoryRepository{
-		shortenFn: shortenFn,
+		shortenFn: 		shortenFn,
+	}
+}
+
+func NewMemoryRepositoryWithCoolStorage(shortenFn func(*url.URL) (string, error),
+	coolStorage *CoolStorage) *MemoryRepository {
+	return &MemoryRepository{
+		shortenFn: 		shortenFn,
+		coolStorage: 	coolStorage,
 	}
 }
 
@@ -21,7 +30,7 @@ func (m *MemoryRepository) Shorten(_ context.Context, origin *url.URL) (string, 
 	var id = ""
 	for id == "" {
 		newID, err := m.shortenFn(origin)
-			if err != nil{
+			if err != nil {
 			return "", err
 		}
 		_, ok := m.urls.Load(newID)
@@ -39,4 +48,45 @@ func (m *MemoryRepository) Restore(_ context.Context, id string) (*url.URL, erro
 		return nil, NewUnknownIDError(id)
 	}
 	return origin.(*url.URL), nil
+}
+
+func (m *MemoryRepository) Load(_ context.Context) error {
+	if m.coolStorage == nil {
+		return NewNoCoolStorageError("MemoryRepository")
+	}
+	records, err := m.coolStorage.FetchRecords()
+	if err != nil {
+		return err
+	}
+	for _, record := range records {
+		origin, err := url.Parse(record.Origin)
+		if err != nil {
+			continue
+		}
+		m.urls.Store(record.ID, origin)
+	}
+	return nil
+}
+
+func (m *MemoryRepository) Dump(_ context.Context) error {
+	if m.coolStorage == nil {
+		return NewNoCoolStorageError("MemoryRepository")
+	}
+	var records []*CoolStorageRecord
+	m.urls.Range(func(id, origin interface{}) bool {
+		originURL := origin.(*url.URL)
+		records = append(records, &CoolStorageRecord{
+			Origin: originURL.String(),
+			ID: 	id.(string),
+		})
+		return true
+	})
+	return m.coolStorage.PutRecords(records)
+}
+
+func (m *MemoryRepository) Close() error {
+	if m.coolStorage != nil {
+		return m.coolStorage.Close()
+	}
+	return nil
 }

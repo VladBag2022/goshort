@@ -15,4 +15,7 @@ type Repository interface {
 		ctx context.Context,
 		id string,
 	) (*url.URL, error)
+
+	Load(ctx context.Context) error
+	Dump(ctx context.Context) error
 }

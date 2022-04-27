@@ -1,6 +1,8 @@
 package server
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,9 +13,30 @@ import (
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
-func shortenHandler(s *Server) http.HandlerFunc {
+type ShortenAPIRequest struct {
+	Origin string `json:"url"`
+}
+
+type ShortenAPIResponse struct {
+	Result string `json:"result"`
+}
+
+func shortenHandler(s Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
+		var reader io.Reader
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			reader = gz
+			defer gz.Close()
+		} else {
+			reader = r.Body
+		}
+
+		body, err := io.ReadAll(reader)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -21,7 +44,7 @@ func shortenHandler(s *Server) http.HandlerFunc {
 
 		content := string(body)
 		if len(content) == 0 {
-			http.Error(w, "Post data should be null", http.StatusBadRequest)
+			http.Error(w, "Post data should not be null", http.StatusBadRequest)
 			return
 		}
 
@@ -39,11 +62,70 @@ func shortenHandler(s *Server) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(fmt.Sprintf("http://%s:%d/%s", s.host, s.port, id)))
+		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, id)))
 	}
 }
 
-func restoreHandler(s *Server) http.HandlerFunc {
+func shortenAPIHandler(s Server) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		var reader io.Reader
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			reader = gz
+			defer gz.Close()
+		} else {
+			reader = r.Body
+		}
+
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var request ShortenAPIRequest
+		if err = json.Unmarshal(body, &request); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if len(request.Origin) == 0 {
+			http.Error(w, "URL was not provided", http.StatusBadRequest)
+			return
+		}
+
+		origin, err := url.Parse(request.Origin)
+		if err != nil{
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		id, err := s.repository.Shorten(r.Context(), origin)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := ShortenAPIResponse{
+			Result: fmt.Sprintf("%s/%s", s.config.BaseURL, id),
+		}
+		responseBytes, err := json.Marshal(&response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
+	}
+}
+
+func restoreHandler(s Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		if id == "" {
