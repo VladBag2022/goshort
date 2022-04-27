@@ -83,3 +83,10 @@ func (m *MemoryRepository) Dump(_ context.Context) error {
 	})
 	return m.coolStorage.PutRecords(records)
 }
+
+func (m *MemoryRepository) Close() error {
+	if m.coolStorage != nil {
+		return m.coolStorage.Close()
+	}
+	return nil
+}

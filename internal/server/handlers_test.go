@@ -71,6 +71,8 @@ func TestServer_shorten(t *testing.T) {
 	}
 
 	mem := storage.NewMemoryRepository(shortener.Shorten)
+	defer mem.Close()
+
 	c, err := NewConfig()
 	if err != nil {
 		require.NoError(t, err)
@@ -126,6 +128,7 @@ func TestServer_api_shorten(t *testing.T) {
 	}
 
 	mem := storage.NewMemoryRepository(shortener.Shorten)
+	defer mem.Close()
 	c, err := NewConfig()
 	if err != nil{
 		require.NoError(t, err)
@@ -182,6 +185,7 @@ func TestServer_restore(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mem := storage.NewMemoryRepository(shortener.Shorten)
+			defer mem.Close()
 
 			u, err := url.Parse(tt.origin)
 			require.NoError(t, err)

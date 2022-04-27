@@ -62,6 +62,15 @@ func (c *CoolStorage) FetchRecords() ([]*CoolStorageRecord, error) {
 	}
 }
 
+func (c *CoolStorage) Close() error {
+	readerErr := c.reader.Close()
+	writerErr := c.writer.Close()
+	if readerErr == nil {
+		return writerErr
+	}
+	return readerErr
+}
+
 func NewCoolStorageWriter(fileName string) (*coolStorageWriter, error) {
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {

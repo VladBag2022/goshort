@@ -45,6 +45,7 @@ func main() {
 	} else {
 		memoryRepository = storage.NewMemoryRepository(shortener.Shorten)
 	}
+	defer memoryRepository.Close()
 	app := server.NewServer(memoryRepository, config)
 
 	go func() {
