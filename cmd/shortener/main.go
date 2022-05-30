@@ -38,12 +38,19 @@ func main() {
 	var memoryRepository *storage.MemoryRepository
 	if len(config.FileStoragePath) != 0 {
 		coolStorage, _ := storage.NewCoolStorage(config.FileStoragePath)
-		memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(shortener.Shorten, coolStorage)
-		if err := memoryRepository.Load(context.Background()); err != nil {
+		memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(
+			shortener.Shorten,
+			shortener.Register,
+			coolStorage,
+		)
+		if err = memoryRepository.Load(context.Background()); err != nil {
 			fmt.Println(err)
 		}
 	} else {
-		memoryRepository = storage.NewMemoryRepository(shortener.Shorten)
+		memoryRepository = storage.NewMemoryRepository(
+			shortener.Shorten,
+			shortener.Register,
+		)
 	}
 	defer memoryRepository.Close()
 	app := server.NewServer(memoryRepository, config)
