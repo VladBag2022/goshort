@@ -91,16 +91,18 @@ func (m *MemoryRepository) Dump(ctx context.Context) error {
 		return NewNoCoolStorageError("MemoryRepository")
 	}
 	var records []*CoolStorageRecord
-	m.userUrls.Range(func(userID, urlID interface{}) bool {
-		originURL, err := m.Restore(ctx, urlID.(string))
-		if err != nil {
-			return true
+	m.userUrls.Range(func(userID, urlIDs interface{}) bool {
+		for _, urlID := range urlIDs.([]string) {
+			originURL, err := m.Restore(ctx, urlID)
+			if err != nil {
+				return true
+			}
+			records = append(records, &CoolStorageRecord{
+				Origin: originURL.String(),
+				ID: 	urlID,
+				User: 	userID.(string),
+			})
 		}
-		records = append(records, &CoolStorageRecord{
-			Origin: originURL.String(),
-			ID: 	urlID.(string),
-			User: 	userID.(string),
-		})
 		return true
 	})
 	return m.coolStorage.PutRecords(records)
