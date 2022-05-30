@@ -3,10 +3,16 @@ package shortener
 import (
 	"math/rand"
 	"net/url"
+
+	"github.com/google/uuid"
 )
 
 func Shorten(_ *url.URL) (string, error) {
 	return RandomString(10), nil
+}
+
+func Register() string {
+	return uuid.New().String()
 }
 
 func RandomString(n int) string {
