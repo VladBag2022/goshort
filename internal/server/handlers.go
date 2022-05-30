@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/VladBag2022/goshort/internal/misc"
 	"io"
 	"net/http"
 	"net/url"
@@ -21,8 +22,44 @@ type ShortenAPIResponse struct {
 	Result string `json:"result"`
 }
 
+func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
+	cookie, err := r.Cookie(s.config.AuthCookieName)
+
+	if err == nil {
+		validCookie, userID, _ := misc.Verify(s.config.AuthCookieKey, cookie.Value)
+
+		if validCookie {
+			_, err = s.repository.ShortenedList(r.Context(), userID)
+			if err == nil {
+				return userID, nil
+			}
+		}
+
+	} else if err != http.ErrNoCookie {
+		return "", err
+	}
+
+	userID, err := s.repository.Register(r.Context())
+	if err != nil {
+		return "", err
+	}
+	cookie = &http.Cookie{
+		Name:  s.config.AuthCookieName,
+		Value: misc.Sign(s.config.AuthCookieKey, userID),
+	}
+	http.SetCookie(w, cookie)
+
+	return userID, nil
+}
+
 func shortenHandler(s Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		var reader io.Reader
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
@@ -54,7 +91,13 @@ func shortenHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		id, err := s.repository.Shorten(r.Context(), origin)
+		urlID, err := s.repository.Shorten(r.Context(), origin)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = s.repository.Bind(r.Context(), urlID, userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -62,12 +105,18 @@ func shortenHandler(s Server) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, id)))
+		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
 	}
 }
 
 func shortenAPIHandler(s Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		var reader io.Reader
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
@@ -104,14 +153,20 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		id, err := s.repository.Shorten(r.Context(), origin)
+		urlID, err := s.repository.Shorten(r.Context(), origin)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = s.repository.Bind(r.Context(), urlID, userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		response := ShortenAPIResponse{
-			Result: fmt.Sprintf("%s/%s", s.config.BaseURL, id),
+			Result: fmt.Sprintf("%s/%s", s.config.BaseURL, urlID),
 		}
 		responseBytes, err := json.Marshal(&response)
 		if err != nil {
