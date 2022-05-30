@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/VladBag2022/goshort/internal/shortener"
+	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
@@ -70,7 +70,7 @@ func TestServer_shorten(t *testing.T) {
 		},
 	}
 
-	mem := storage.NewMemoryRepository(shortener.Shorten, shortener.Register)
+	mem := storage.NewMemoryRepository(misc.Shorten, misc.Register)
 	defer mem.Close()
 
 	c, err := NewConfig()
@@ -127,7 +127,7 @@ func TestServer_api_shorten(t *testing.T) {
 		},
 	}
 
-	mem := storage.NewMemoryRepository(shortener.Shorten, shortener.Register)
+	mem := storage.NewMemoryRepository(misc.Shorten, misc.Register)
 	defer mem.Close()
 	c, err := NewConfig()
 	if err != nil{
@@ -184,7 +184,7 @@ func TestServer_restore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mem := storage.NewMemoryRepository(shortener.Shorten, shortener.Register)
+			mem := storage.NewMemoryRepository(misc.Shorten, misc.Register)
 			defer mem.Close()
 
 			u, err := url.Parse(tt.origin)

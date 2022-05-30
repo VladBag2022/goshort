@@ -13,7 +13,7 @@ func router(s Server) chi.Router {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(authenticationHandler)
+	r.Use(authenticationMiddleware(s))
 	r.Use(gziphandler.GzipHandler)
 
 	r.Get("/{id}", restoreHandler(s))

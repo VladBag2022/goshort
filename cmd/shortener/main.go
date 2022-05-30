@@ -9,8 +9,8 @@ import (
 
 	flag "github.com/spf13/pflag"
 
+	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/server"
-	"github.com/VladBag2022/goshort/internal/shortener"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
@@ -21,7 +21,7 @@ func main() {
 		return
 	}
 	serverAddressPtr := flag.StringP("address", "a", "","server address: host:port")
-	baseURLPtr := flag.StringP("base", "b", "", "base url for URL shortener")
+	baseURLPtr := flag.StringP("base", "b", "", "base url for URL misc")
 	fileStoragePathPtr := flag.StringP("file", "f", "", "file storage path")
 	flag.Parse()
 
@@ -39,8 +39,8 @@ func main() {
 	if len(config.FileStoragePath) != 0 {
 		coolStorage, _ := storage.NewCoolStorage(config.FileStoragePath)
 		memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(
-			shortener.Shorten,
-			shortener.Register,
+			misc.Shorten,
+			misc.Register,
 			coolStorage,
 		)
 		if err = memoryRepository.Load(context.Background()); err != nil {
@@ -48,8 +48,8 @@ func main() {
 		}
 	} else {
 		memoryRepository = storage.NewMemoryRepository(
-			shortener.Shorten,
-			shortener.Register,
+			misc.Shorten,
+			misc.Register,
 		)
 	}
 	defer memoryRepository.Close()
@@ -66,7 +66,7 @@ func main() {
 		syscall.SIGQUIT)
 	<-sigChan
 
-	if err := memoryRepository.Dump(context.Background()); err != nil {
+	if err = memoryRepository.Dump(context.Background()); err != nil {
 		fmt.Println(err)
 	}
 }
