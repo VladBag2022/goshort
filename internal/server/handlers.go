@@ -22,6 +22,11 @@ type ShortenAPIResponse struct {
 	Result string `json:"result"`
 }
 
+type ShortenedListEntryAPIResponse struct {
+	Result string `json:"short_url"`
+	Origin string `json:"original_url"`
+}
+
 func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
 	cookie, err := r.Cookie(s.config.AuthCookieName)
 
@@ -177,6 +182,51 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		w.Write(responseBytes)
+	}
+}
+
+func shortenedListAPIHandler(s Server) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		urlIDs, err := s.repository.ShortenedList(r.Context(), userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if len(urlIDs) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+		} else {
+			var responseList []ShortenedListEntryAPIResponse
+
+			for _, urlID := range urlIDs {
+				origin, err := s.repository.Restore(r.Context(), urlID)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				responseList = append(responseList, ShortenedListEntryAPIResponse{
+					Result: fmt.Sprintf("%s/%s", s.config.BaseURL, urlID),
+					Origin: origin.String(),
+				})
+			}
+
+			responseBytes, err := json.Marshal(&responseList)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			w.Write(responseBytes)
+		}
 	}
 }
 
