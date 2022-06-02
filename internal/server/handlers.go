@@ -224,7 +224,6 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
 			w.Write(responseBytes)
 		}
 	}
