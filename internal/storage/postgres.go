@@ -3,7 +3,8 @@ package storage
 import (
 	"context"
 	"database/sql"
-	_ "github.com/jackc/pgx"
+
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 type PostgresRepository struct {
@@ -18,7 +19,7 @@ func NewPostgresRepository(
 	//shortenFn 		func(*url.URL) (string, error),
 	//registerFn 		func() string,
 ) (*PostgresRepository, error) {
-	db, err := sql.Open("postgres", databaseDSN)
+	db, err := sql.Open("pgx", databaseDSN)
 	if err != nil {
 		return nil, err
 	}
