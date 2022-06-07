@@ -16,7 +16,7 @@ type MemoryRepository struct {
 }
 
 func NewMemoryRepository(
-	shortenFn func(*url.URL) (string, error),
+	shortenFn 		func(*url.URL) (string, error),
 	registerFn 		func() string,
 ) *MemoryRepository {
 	return &MemoryRepository{

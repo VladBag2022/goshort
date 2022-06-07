@@ -19,6 +19,7 @@ func router(s Server) chi.Router {
 	r.Post("/", shortenHandler(s))
 	r.Post("/api/shorten", shortenAPIHandler(s))
 	r.Get("/api/user/urls", shortenedListAPIHandler(s))
+	r.Get("/ping", pingHandler(s))
 	r.MethodNotAllowed(badRequestHandler)
 	r.NotFound(badRequestHandler)
 

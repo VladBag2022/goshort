@@ -252,6 +252,19 @@ func restoreHandler(s Server) http.HandlerFunc {
 	}
 }
 
+func pingHandler(s Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.postgres == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err := s.postgres.Ping(r.Context()); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
 func badRequestHandler(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
 }

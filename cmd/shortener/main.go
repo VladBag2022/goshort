@@ -23,6 +23,7 @@ func main() {
 	serverAddressPtr := flag.StringP("address", "a", "","server address: host:port")
 	baseURLPtr := flag.StringP("base", "b", "", "base url for URL misc")
 	fileStoragePathPtr := flag.StringP("file", "f", "", "file storage path")
+	databasePtr := flag.StringP("database", "d", "", "database DSN")
 	flag.Parse()
 
 	if len(*serverAddressPtr) != 0 {
@@ -33,6 +34,9 @@ func main() {
 	}
 	if len(*fileStoragePathPtr) != 0 {
 		config.FileStoragePath = *fileStoragePathPtr
+	}
+	if len(*databasePtr) != 0 {
+		config.DatabaseDSN = *databasePtr
 	}
 
 	var memoryRepository *storage.MemoryRepository
@@ -53,7 +57,13 @@ func main() {
 		)
 	}
 	defer memoryRepository.Close()
-	app := server.NewServer(memoryRepository, config)
+
+	var postgresRepository *storage.PostgresRepository
+	if len(config.DatabaseDSN) != 0 {
+		postgresRepository, _ = storage.NewPostgresRepository(config.DatabaseDSN)
+	}
+
+	app := server.NewServer(memoryRepository, postgresRepository, config)
 
 	go func() {
 		app.ListenAndServer()
@@ -68,5 +78,9 @@ func main() {
 
 	if err = memoryRepository.Dump(context.Background()); err != nil {
 		fmt.Println(err)
+	}
+
+	if postgresRepository != nil {
+		postgresRepository.Close()
 	}
 }

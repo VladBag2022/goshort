@@ -30,4 +30,6 @@ type Repository interface {
 		ctx context.Context,
 		id  string,
 	) ([]string, error)
+
+	Close() error
 }
