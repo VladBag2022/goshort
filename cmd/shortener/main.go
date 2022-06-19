@@ -39,31 +39,42 @@ func main() {
 		config.DatabaseDSN = *databasePtr
 	}
 
-	var memoryRepository *storage.MemoryRepository
-	if len(config.FileStoragePath) != 0 {
-		coolStorage, _ := storage.NewCoolStorage(config.FileStoragePath)
-		memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(
-			misc.Shorten,
-			misc.Register,
-			coolStorage,
-		)
-		if err = memoryRepository.Load(context.Background()); err != nil {
-			fmt.Println(err)
-		}
-	} else {
-		memoryRepository = storage.NewMemoryRepository(
-			misc.Shorten,
-			misc.Register,
-		)
-	}
-	defer memoryRepository.Close()
-
+	var app server.Server
 	var postgresRepository *storage.PostgresRepository
-	if len(config.DatabaseDSN) != 0 {
-		postgresRepository, _ = storage.NewPostgresRepository(config.DatabaseDSN)
-	}
+	var memoryRepository *storage.MemoryRepository
 
-	app := server.NewServer(memoryRepository, postgresRepository, config)
+	if len(config.DatabaseDSN) != 0 {
+		postgresRepository, err = storage.NewPostgresRepository(
+			context.Background(),
+			config.DatabaseDSN,
+			misc.Shorten,
+			misc.Register,
+		)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		app = server.NewServer(postgresRepository, postgresRepository, config)
+	} else {
+		if len(config.FileStoragePath) != 0 {
+			coolStorage, _ := storage.NewCoolStorage(config.FileStoragePath)
+			memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(
+				misc.Shorten,
+				misc.Register,
+				coolStorage,
+			)
+			if err = memoryRepository.Load(context.Background()); err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			memoryRepository = storage.NewMemoryRepository(
+				misc.Shorten,
+				misc.Register,
+			)
+		}
+		app = server.NewServer(memoryRepository, postgresRepository, config)
+	}
 
 	go func() {
 		app.ListenAndServer()
@@ -76,8 +87,11 @@ func main() {
 		syscall.SIGQUIT)
 	<-sigChan
 
-	if err = memoryRepository.Dump(context.Background()); err != nil {
-		fmt.Println(err)
+	if memoryRepository != nil {
+		if err = memoryRepository.Dump(context.Background()); err != nil {
+			fmt.Println(err)
+		}
+		memoryRepository.Close()
 	}
 
 	if postgresRepository != nil {
