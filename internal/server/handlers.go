@@ -338,7 +338,7 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 		for i := 0; i < len(requestList); i++ {
 			response := ShortenBatchListEntryAPIResponse {
 				ID: 	requestList[i].ID,
-				Result: ids[i],
+				Result: fmt.Sprintf("%s/%s", s.config.BaseURL, ids[i]),
 			}
 			responseList = append(responseList, response)
 		}
