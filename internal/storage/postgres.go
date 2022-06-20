@@ -98,7 +98,7 @@ func (p *PostgresRepository) urlExists(ctx context.Context, id string) (bool, er
 	return count > 0, err
 }
 
-func (p *PostgresRepository) newUrlID(ctx context.Context, origin *url.URL) (string, error) {
+func (p *PostgresRepository) newURLID(ctx context.Context, origin *url.URL) (string, error) {
 	var id = ""
 	for id == "" {
 		newID, err := p.shortenFn(origin)
@@ -117,7 +117,7 @@ func (p *PostgresRepository) newUrlID(ctx context.Context, origin *url.URL) (str
 }
 
 func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (string, error) {
-	id, err := p.newUrlID(ctx, origin)
+	id, err := p.newURLID(ctx, origin)
 	if err != nil {
 		return id, err
 	}
@@ -283,7 +283,7 @@ func (p *PostgresRepository) ShortenBatch(
 
 	var ids []string
 	for _, origin := range origins {
-		id, err := p.newUrlID(ctx, origin)
+		id, err := p.newURLID(ctx, origin)
 		if err != nil {
 			return nil, err
 		}
