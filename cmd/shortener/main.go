@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
 	"github.com/VladBag2022/goshort/internal/misc"
@@ -15,11 +16,16 @@ import (
 )
 
 func main() {
+	log.SetLevel(log.TraceLevel)
+
+	log.Trace("Read configuration from environment variables...")
 	config, err := server.NewConfig()
 	if err != nil{
-		fmt.Println(err)
+		log.Error(fmt.Sprintf("Unable to read configuration from environment variables: %s", err))
 		return
 	}
+
+	log.Trace("Read configuration from command line arguments...")
 	serverAddressPtr := flag.StringP("address", "a", "","server address: host:port")
 	baseURLPtr := flag.StringP("base", "b", "", "base url for URL misc")
 	fileStoragePathPtr := flag.StringP("file", "f", "", "file storage path")
