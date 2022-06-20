@@ -296,12 +296,16 @@ func (p *PostgresRepository) ShortenBatch(
 	}
 
 	for i := 0; i < len(origins); i++ {
-		if _, err = p.insertURLStmt.ExecContext(ctx, ids[i], origins[i]); err != nil {
-			err = tx.Rollback()
+		if _, err = p.insertURLStmt.ExecContext(ctx, ids[i], origins[i].String()); err != nil {
+			if err := tx.Rollback(); err != nil {
+				return nil, err
+			}
 			return nil, err
 		}
 		if _, err = p.bindStmt.ExecContext(ctx, userID, ids[i]); err != nil {
-			err = tx.Rollback()
+			if err := tx.Rollback(); err != nil {
+				return nil, err
+			}
 			return nil, err
 		}
 	}
