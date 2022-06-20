@@ -31,5 +31,11 @@ type Repository interface {
 		id  string,
 	) ([]string, error)
 
-	Close() error
+	ShortenBatch(
+		ctx 		context.Context,
+		origins		[]*url.URL,
+		userID 		string,
+	) ([]string, error)
+
+	Close() []error
 }

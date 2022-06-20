@@ -156,9 +156,34 @@ func (m *MemoryRepository) ShortenedList(
 	return urls.([]string), nil
 }
 
-func (m *MemoryRepository) Close() error {
+func (m *MemoryRepository) Close() []error {
+	var errs []error
+
 	if m.coolStorage != nil {
-		return m.coolStorage.Close()
+		err := m.coolStorage.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return nil
+	return errs
+}
+
+func (m *MemoryRepository) ShortenBatch(
+	ctx			context.Context,
+	origins		[]*url.URL,
+	userID 		string,
+) ([]string, error) {
+	var ids []string
+	for _, origin := range origins {
+		id, err := m.Shorten(ctx, origin)
+		if err != nil {
+			return ids, err
+		}
+		err = m.Bind(ctx, id, userID)
+		if err != nil {
+			return ids, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }

@@ -13,6 +13,8 @@ type PostgresRepository struct {
 	database 		*sql.DB
 	shortenFn 		func(*url.URL) (string, error)
 	registerFn 		func() string
+	insertUrlStmt 	*sql.Stmt
+	bindStmt	 	*sql.Stmt
 }
 
 func NewPostgresRepository(
@@ -25,20 +27,37 @@ func NewPostgresRepository(
 	if err != nil {
 		return nil, err
 	}
+	insertUrlStmt, err := db.Prepare("INSERT INTO shortened_urls (id, url) VALUES ($1, $2)")
+	if err != nil {
+		return nil, err
+	}
+	bindStmt, err := db.Prepare("INSERT INTO users_url_m2m (user_id, url_id) VALUES ($1, $2)")
+	if err != nil {
+		return nil, err
+	}
 	var p = &PostgresRepository{
-		database: 	db,
-		shortenFn: 	shortenFn,
-		registerFn: registerFn,
+		database: 		db,
+		shortenFn: 		shortenFn,
+		registerFn: 	registerFn,
+		insertUrlStmt: 	insertUrlStmt,
+		bindStmt:		bindStmt,
 	}
 	err = p.createSchema(ctx)
 	return p, err
 }
 
-func (p *PostgresRepository) Close() error {
-	if p.database != nil {
-		return p.database.Close()
+func (p *PostgresRepository) Close() []error {
+	var errs []error
+
+	err := p.insertUrlStmt.Close()
+	if err != nil {
+		errs = append(errs, err)
 	}
-	return nil
+	err = p.database.Close()
+	if err != nil {
+		errs = append(errs, err)
+	}
+	return errs
 }
 
 func (p *PostgresRepository) Ping(ctx context.Context) error {
@@ -79,7 +98,7 @@ func (p *PostgresRepository) urlExists(ctx context.Context, id string) (bool, er
 	return count > 0, err
 }
 
-func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (string, error) {
+func (p *PostgresRepository) newUrlID(ctx context.Context, origin *url.URL) (string, error) {
 	var id = ""
 	for id == "" {
 		newID, err := p.shortenFn(origin)
@@ -94,8 +113,15 @@ func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (stri
 			id = newID
 		}
 	}
-	_, err := p.database.ExecContext(ctx, "INSERT INTO shortened_urls (id, url) VALUES ($1, $2)",
-		id, origin.String())
+	return id, nil
+}
+
+func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (string, error) {
+	id, err := p.newUrlID(ctx, origin)
+	if err != nil {
+		return id, err
+	}
+	_, err = p.insertUrlStmt.ExecContext(ctx, id, origin.String())
 	if err != nil {
 		return "", err
 	}
@@ -193,8 +219,7 @@ func (p *PostgresRepository) Bind(
 		return NewUnknownIDError(fmt.Sprintf("url: %s", userID))
 	}
 
-	_, err = p.database.ExecContext(ctx, "INSERT INTO users_url_m2m (user_id, url_id) VALUES ($1, $2)",
-		userID, urlID)
+	_, err = p.bindStmt.ExecContext(ctx, userID, urlID)
 	return err
 }
 
@@ -241,4 +266,49 @@ func (p *PostgresRepository) ShortenedList(
 		return []string{}, err
 	}
 	return urls, nil
+}
+
+func (p *PostgresRepository) ShortenBatch(
+	ctx			context.Context,
+	origins		[]*url.URL,
+	userID 		string,
+) ([]string, error) {
+	exists, err := p.userExists(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, NewUnknownIDError(fmt.Sprintf("user: %s", userID))
+	}
+
+	var ids []string
+	for _, origin := range origins {
+		id, err := p.newUrlID(ctx, origin)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	tx, err := p.database.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(origins); i++ {
+		if _, err = p.insertUrlStmt.ExecContext(ctx, ids[i], origins[i]); err != nil {
+			err = tx.Rollback()
+			return nil, err
+		}
+		if _, err = p.bindStmt.ExecContext(ctx, userID, ids[i]); err != nil {
+			err = tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return ids, nil
 }

@@ -27,6 +27,16 @@ type ShortenedListEntryAPIResponse struct {
 	Origin string `json:"original_url"`
 }
 
+type ShortenBatchListEntryAPIRequest struct {
+	ID 		string `json:"correlation_id"`
+	Origin 	string `json:"original_url"`
+}
+
+type ShortenBatchListEntryAPIResponse struct {
+	ID 		string `json:"correlation_id"`
+	Result 	string `json:"short_url"`
+}
+
 func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
 	cookie, err := r.Cookie(s.config.AuthCookieName)
 
@@ -267,4 +277,80 @@ func pingHandler(s Server) http.HandlerFunc {
 
 func badRequestHandler(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
+}
+
+func shortenBatchAPIHandler(s Server) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var reader io.Reader
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			reader = gz
+			defer gz.Close()
+		} else {
+			reader = r.Body
+		}
+
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var requestList []ShortenBatchListEntryAPIRequest
+		if err = json.Unmarshal(body, &requestList); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var origins []*url.URL
+		for _, request := range requestList {
+			if len(request.Origin) == 0 {
+				http.Error(w, "URL was not provided", http.StatusBadRequest)
+				return
+			}
+
+			origin, err := url.Parse(request.Origin)
+			if err != nil{
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			origins = append(origins, origin)
+		}
+
+		ids, err := s.repository.ShortenBatch(r.Context(), origins, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var responseList []ShortenBatchListEntryAPIResponse
+		for i := 0; i < len(requestList); i++ {
+			response := ShortenBatchListEntryAPIResponse {
+				ID: 	requestList[i].ID,
+				Result: ids[i],
+			}
+			responseList = append(responseList, response)
+		}
+
+		responseBytes, err := json.Marshal(&responseList)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
+	}
 }
