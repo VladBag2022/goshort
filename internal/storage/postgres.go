@@ -10,11 +10,11 @@ import (
 )
 
 type PostgresRepository struct {
-	database 		*sql.DB
-	shortenFn 		func(*url.URL) (string, error)
-	registerFn 		func() string
-	insertUrlStmt 	*sql.Stmt
-	bindStmt	 	*sql.Stmt
+	database      *sql.DB
+	shortenFn     func(*url.URL) (string, error)
+	registerFn    func() string
+	insertURLStmt *sql.Stmt
+	bindStmt      *sql.Stmt
 }
 
 func NewPostgresRepository(
@@ -27,7 +27,7 @@ func NewPostgresRepository(
 	if err != nil {
 		return nil, err
 	}
-	insertUrlStmt, err := db.Prepare("INSERT INTO shortened_urls (id, url) VALUES ($1, $2)")
+	insertURLStmt, err := db.Prepare("INSERT INTO shortened_urls (id, url) VALUES ($1, $2)")
 	if err != nil {
 		return nil, err
 	}
@@ -36,11 +36,11 @@ func NewPostgresRepository(
 		return nil, err
 	}
 	var p = &PostgresRepository{
-		database: 		db,
-		shortenFn: 		shortenFn,
-		registerFn: 	registerFn,
-		insertUrlStmt: 	insertUrlStmt,
-		bindStmt:		bindStmt,
+		database:      db,
+		shortenFn:     shortenFn,
+		registerFn:    registerFn,
+		insertURLStmt: insertURLStmt,
+		bindStmt:      bindStmt,
 	}
 	err = p.createSchema(ctx)
 	return p, err
@@ -49,7 +49,7 @@ func NewPostgresRepository(
 func (p *PostgresRepository) Close() []error {
 	var errs []error
 
-	err := p.insertUrlStmt.Close()
+	err := p.insertURLStmt.Close()
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -121,7 +121,7 @@ func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (stri
 	if err != nil {
 		return id, err
 	}
-	_, err = p.insertUrlStmt.ExecContext(ctx, id, origin.String())
+	_, err = p.insertURLStmt.ExecContext(ctx, id, origin.String())
 	if err != nil {
 		return "", err
 	}
@@ -296,7 +296,7 @@ func (p *PostgresRepository) ShortenBatch(
 	}
 
 	for i := 0; i < len(origins); i++ {
-		if _, err = p.insertUrlStmt.ExecContext(ctx, ids[i], origins[i]); err != nil {
+		if _, err = p.insertURLStmt.ExecContext(ctx, ids[i], origins[i]); err != nil {
 			err = tx.Rollback()
 			return nil, err
 		}
