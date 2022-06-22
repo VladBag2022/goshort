@@ -53,6 +53,10 @@ func (p *PostgresRepository) Close() []error {
 	if err != nil {
 		errs = append(errs, err)
 	}
+	err = p.bindStmt.Close()
+	if err != nil {
+		errs = append(errs, err)
+	}
 	err = p.database.Close()
 	if err != nil {
 		errs = append(errs, err)
