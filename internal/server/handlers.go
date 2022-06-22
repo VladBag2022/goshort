@@ -4,13 +4,13 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/VladBag2022/goshort/internal/misc"
 	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
@@ -106,7 +106,8 @@ func shortenHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		urlID, err := s.repository.Shorten(r.Context(), origin)
+		urlID, inserted, err := s.repository.Shorten(r.Context(), origin)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -119,7 +120,13 @@ func shortenHandler(s Server) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusCreated)
+
+		if inserted {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusConflict)
+		}
+
 		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
 	}
 }
@@ -168,7 +175,7 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		urlID, err := s.repository.Shorten(r.Context(), origin)
+		urlID, inserted, err := s.repository.Shorten(r.Context(), origin)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -190,7 +197,13 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+
+		if inserted {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusConflict)
+		}
+
 		w.Write(responseBytes)
 	}
 }

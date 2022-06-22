@@ -3,9 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/jackc/pgerrcode"
 	"net/url"
 
+	"github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
@@ -56,7 +59,7 @@ func (p *PostgresRepository) createSchema(ctx context.Context) error {
 	var tables = []string {
 		"CREATE TABLE IF NOT EXISTS shortened_urls (" +
 		"id TEXT PRIMARY KEY, " +
-		"url TEXT NOT NULL)",
+		"url TEXT NOT NULL UNIQUE)",
 		"CREATE TABLE IF NOT EXISTS users (" +
 		"id TEXT PRIMARY KEY)",
 		"CREATE TABLE IF NOT EXISTS users_url_m2m (" +
@@ -69,11 +72,12 @@ func (p *PostgresRepository) createSchema(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
 
-func (p *PostgresRepository) urlExists(ctx context.Context, id string) (bool, error) {
+func (p *PostgresRepository) urlIDExists(ctx context.Context, id string) (bool, error) {
 	var count int64
 	row := p.database.QueryRowContext(ctx, "SELECT COUNT(*) FROM shortened_urls WHERE id = $1", id)
 	err := row.Scan(&count)
@@ -83,6 +87,16 @@ func (p *PostgresRepository) urlExists(ctx context.Context, id string) (bool, er
 	return count > 0, err
 }
 
+func (p *PostgresRepository) getURLID(ctx context.Context, origin *url.URL) (string, error) {
+	var id string
+	row := p.database.QueryRowContext(ctx, "SELECT id FROM shortened_urls WHERE url = $1", origin.String())
+	err := row.Scan(&id)
+	if err != nil {
+		return id, err
+	}
+	return id, err
+}
+
 func (p *PostgresRepository) newURLID(ctx context.Context, origin *url.URL) (string, error) {
 	var id = ""
 	for id == "" {
@@ -90,7 +104,7 @@ func (p *PostgresRepository) newURLID(ctx context.Context, origin *url.URL) (str
 		if err != nil {
 			return "", err
 		}
-		exists, err := p.urlExists(ctx, newID)
+		exists, err := p.urlIDExists(ctx, newID)
 		if err != nil {
 			return "", err
 		}
@@ -101,19 +115,30 @@ func (p *PostgresRepository) newURLID(ctx context.Context, origin *url.URL) (str
 	return id, nil
 }
 
-func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (string, error) {
+func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (string, bool, error) {
 	id, err := p.newURLID(ctx, origin)
 	if err != nil {
-		return id, err
+		return id, false, err
 	}
 
 	_, err = p.database.ExecContext(ctx, "INSERT INTO shortened_urls (id, url) VALUES ($1, $2)",
 		id, origin.String())
 
-	if err != nil {
-		return "", err
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == pgerrcode.UniqueViolation {
+			id, err = p.getURLID(ctx, origin)
+			if err != nil {
+				return "", false, err
+			}
+			return id, false, nil
+		}
 	}
-	return id, nil
+
+	if err != nil {
+		return "", false, err
+	}
+	return id, true, nil
 }
 
 func (p *PostgresRepository) Restore(ctx context.Context, id string) (*url.URL, error) {
@@ -199,7 +224,7 @@ func (p *PostgresRepository) Bind(
 		return NewUnknownIDError(fmt.Sprintf("user: %s", userID))
 	}
 
-	exists, err = p.urlExists(ctx, urlID)
+	exists, err = p.urlIDExists(ctx, urlID)
 	if err != nil {
 		return err
 	}

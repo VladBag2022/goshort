@@ -9,7 +9,7 @@ type Repository interface {
 	Shorten(
 		ctx 	context.Context,
 		origin  *url.URL,
-	) (string, error)
+	) (string, bool, error)
 
 	Restore(
 		ctx context.Context,

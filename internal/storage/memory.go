@@ -37,12 +37,12 @@ func NewMemoryRepositoryWithCoolStorage(
 	}
 }
 
-func (m *MemoryRepository) Shorten(_ context.Context, origin *url.URL) (string, error) {
+func (m *MemoryRepository) Shorten(_ context.Context, origin *url.URL) (string, bool, error) {
 	var id = ""
 	for id == "" {
 		newID, err := m.shortenFn(origin)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
 		_, ok := m.urls.Load(newID)
 		if !ok {
@@ -50,7 +50,7 @@ func (m *MemoryRepository) Shorten(_ context.Context, origin *url.URL) (string, 
 		}
 	}
 	m.urls.Store(id, origin)
-	return id, nil
+	return id, true, nil
 }
 
 func (m *MemoryRepository) Restore(_ context.Context, id string) (*url.URL, error) {
@@ -175,7 +175,7 @@ func (m *MemoryRepository) ShortenBatch(
 ) ([]string, error) {
 	var ids []string
 	for _, origin := range origins {
-		id, err := m.Shorten(ctx, origin)
+		id, _, err := m.Shorten(ctx, origin)
 		if err != nil {
 			return ids, err
 		}

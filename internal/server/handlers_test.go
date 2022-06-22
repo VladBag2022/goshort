@@ -189,7 +189,7 @@ func TestServer_restore(t *testing.T) {
 
 			u, err := url.Parse(tt.origin)
 			require.NoError(t, err)
-			id, err := mem.Shorten(context.Background(), u)
+			id, _, err := mem.Shorten(context.Background(), u)
 			require.NoError(t, err)
 
 			c, err := NewConfig()
