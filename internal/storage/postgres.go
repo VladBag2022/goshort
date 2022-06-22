@@ -13,8 +13,6 @@ type PostgresRepository struct {
 	database 		*sql.DB
 	shortenFn 		func(*url.URL) (string, error)
 	registerFn 		func() string
-	insertURLStmt 	*sql.Stmt
-	bindStmt      	*sql.Stmt
 }
 
 func NewPostgresRepository(
@@ -27,20 +25,10 @@ func NewPostgresRepository(
 	if err != nil {
 		return nil, err
 	}
-	insertURLStmt, err := db.Prepare("INSERT INTO shortened_urls (id, url) VALUES ($1, $2)")
-	if err != nil {
-		return nil, err
-	}
-	bindStmt, err := db.Prepare("INSERT INTO users_url_m2m (user_id, url_id) VALUES ($1, $2)")
-	if err != nil {
-		return nil, err
-	}
 	var p = &PostgresRepository{
 		database: 	db,
 		shortenFn: 	shortenFn,
 		registerFn: registerFn,
-		insertURLStmt: insertURLStmt,
-		bindStmt:      bindStmt,
 	}
 	err = p.createSchema(ctx)
 	return p, err
@@ -49,17 +37,7 @@ func NewPostgresRepository(
 func (p *PostgresRepository) Close() []error {
 	var errs []error
 
-	err := p.insertURLStmt.Close()
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	err = p.bindStmt.Close()
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	err = p.database.Close()
+	err := p.database.Close()
 	if err != nil {
 		errs = append(errs, err)
 	}
