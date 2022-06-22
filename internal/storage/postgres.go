@@ -13,8 +13,6 @@ type PostgresRepository struct {
 	database      *sql.DB
 	shortenFn     func(*url.URL) (string, error)
 	registerFn    func() string
-	insertURLStmt *sql.Stmt
-	bindStmt      *sql.Stmt
 }
 
 func NewPostgresRepository(
@@ -27,20 +25,10 @@ func NewPostgresRepository(
 	if err != nil {
 		return nil, err
 	}
-	insertURLStmt, err := db.Prepare("INSERT INTO shortened_urls (id, url) VALUES ($1, $2)")
-	if err != nil {
-		return nil, err
-	}
-	bindStmt, err := db.Prepare("INSERT INTO users_url_m2m (user_id, url_id) VALUES ($1, $2)")
-	if err != nil {
-		return nil, err
-	}
 	var p = &PostgresRepository{
 		database:      db,
 		shortenFn:     shortenFn,
 		registerFn:    registerFn,
-		insertURLStmt: insertURLStmt,
-		bindStmt:      bindStmt,
 	}
 	err = p.createSchema(ctx)
 	return p, err
@@ -49,18 +37,11 @@ func NewPostgresRepository(
 func (p *PostgresRepository) Close() []error {
 	var errs []error
 
-	err := p.insertURLStmt.Close()
+	err := p.database.Close()
 	if err != nil {
 		errs = append(errs, err)
 	}
-	err = p.bindStmt.Close()
-	if err != nil {
-		errs = append(errs, err)
-	}
-	err = p.database.Close()
-	if err != nil {
-		errs = append(errs, err)
-	}
+
 	return errs
 }
 
@@ -125,7 +106,10 @@ func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (stri
 	if err != nil {
 		return id, err
 	}
-	_, err = p.insertURLStmt.ExecContext(ctx, id, origin.String())
+
+	_, err = p.database.ExecContext(ctx, "INSERT INTO shortened_urls (id, url) VALUES ($1, $2)",
+		id, origin.String())
+
 	if err != nil {
 		return "", err
 	}
@@ -223,7 +207,9 @@ func (p *PostgresRepository) Bind(
 		return NewUnknownIDError(fmt.Sprintf("url: %s", userID))
 	}
 
-	_, err = p.bindStmt.ExecContext(ctx, userID, urlID)
+	_, err = p.database.ExecContext(ctx, "INSERT INTO users_url_m2m (user_id, url_id) VALUES ($1, $2)",
+		userID, urlID)
+
 	return err
 }
 
@@ -294,19 +280,34 @@ func (p *PostgresRepository) ShortenBatch(
 		ids = append(ids, id)
 	}
 
+	// шаг 1 — объявляем транзакцию
 	tx, err := p.database.Begin()
 	if err != nil {
 		return nil, err
 	}
+	// шаг 1.1 — если возникает ошибка, откатываем изменения
+	defer tx.Rollback()
+
+	// шаг 2 — готовим инструкцию
+	insertURLStmt, err := tx.PrepareContext(ctx, "INSERT INTO shortened_urls (id, url) VALUES ($1, $2)")
+	if err != nil {
+		return nil, err
+	}
+	defer insertURLStmt.Close()
+	bindStmt, err := tx.PrepareContext(ctx, "INSERT INTO users_url_m2m (user_id, url_id) VALUES ($1, $2)")
+	if err != nil {
+		return nil, err
+	}
+	defer bindStmt.Close()
 
 	for i := 0; i < len(origins); i++ {
-		if _, err = p.insertURLStmt.ExecContext(ctx, ids[i], origins[i].String()); err != nil {
+		if _, err = insertURLStmt.ExecContext(ctx, ids[i], origins[i].String()); err != nil {
 			if err := tx.Rollback(); err != nil {
 				return nil, err
 			}
 			return nil, err
 		}
-		if _, err = p.bindStmt.ExecContext(ctx, userID, ids[i]); err != nil {
+		if _, err = bindStmt.ExecContext(ctx, userID, ids[i]); err != nil {
 			if err := tx.Rollback(); err != nil {
 				return nil, err
 			}
