@@ -156,9 +156,14 @@ func (m *MemoryRepository) ShortenedList(
 	return urls.([]string), nil
 }
 
-func (m *MemoryRepository) Close() error {
+func (m *MemoryRepository) Close() []error {
+	var errs []error
+
 	if m.coolStorage != nil {
-		return m.coolStorage.Close()
+		err := m.coolStorage.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return nil
+	return errs
 }

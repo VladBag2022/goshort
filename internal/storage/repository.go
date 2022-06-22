@@ -31,5 +31,5 @@ type Repository interface {
 		id  string,
 	) ([]string, error)
 
-	Close() error
+	Close() []error
 }
