@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/VladBag2022/goshort/internal/shortener"
+	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
@@ -70,14 +70,14 @@ func TestServer_shorten(t *testing.T) {
 		},
 	}
 
-	mem := storage.NewMemoryRepository(shortener.Shorten)
+	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
 	defer mem.Close()
 
 	c, err := NewConfig()
 	if err != nil {
 		require.NoError(t, err)
 	}
-	s := NewServer(mem, c)
+	s := NewServer(mem, nil, c)
 
 	r := router(s)
 	ts := httptest.NewServer(r)
@@ -127,13 +127,13 @@ func TestServer_api_shorten(t *testing.T) {
 		},
 	}
 
-	mem := storage.NewMemoryRepository(shortener.Shorten)
+	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
 	defer mem.Close()
 	c, err := NewConfig()
 	if err != nil{
 		require.NoError(t, err)
 	}
-	s := NewServer(mem, c)
+	s := NewServer(mem, nil, c)
 
 	r := router(s)
 	ts := httptest.NewServer(r)
@@ -184,19 +184,19 @@ func TestServer_restore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mem := storage.NewMemoryRepository(shortener.Shorten)
+			mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
 			defer mem.Close()
 
 			u, err := url.Parse(tt.origin)
 			require.NoError(t, err)
-			id, err := mem.Shorten(context.Background(), u)
+			id, _, err := mem.Shorten(context.Background(), u)
 			require.NoError(t, err)
 
 			c, err := NewConfig()
 			if err != nil{
 				require.NoError(t, err)
 			}
-			s := NewServer(mem, c)
+			s := NewServer(mem, nil, c)
 			r := router(s)
 			ts := httptest.NewServer(r)
 			defer ts.Close()

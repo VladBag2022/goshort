@@ -7,22 +7,27 @@ import (
 	"os/signal"
 	"syscall"
 
+	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
+	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/server"
-	"github.com/VladBag2022/goshort/internal/shortener"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
 func main() {
+	log.Trace("Read configuration from environment variables...")
 	config, err := server.NewConfig()
 	if err != nil{
-		fmt.Println(err)
+		log.Error(fmt.Sprintf("Unable to read configuration from environment variables: %s", err))
 		return
 	}
+
+	log.Trace("Read configuration from command line arguments...")
 	serverAddressPtr := flag.StringP("address", "a", "","server address: host:port")
-	baseURLPtr := flag.StringP("base", "b", "", "base url for URL shortener")
+	baseURLPtr := flag.StringP("base", "b", "", "base url for URL misc")
 	fileStoragePathPtr := flag.StringP("file", "f", "", "file storage path")
+	databasePtr := flag.StringP("database", "d", "", "database DSN")
 	flag.Parse()
 
 	if len(*serverAddressPtr) != 0 {
@@ -34,19 +39,46 @@ func main() {
 	if len(*fileStoragePathPtr) != 0 {
 		config.FileStoragePath = *fileStoragePathPtr
 	}
-
-	var memoryRepository *storage.MemoryRepository
-	if len(config.FileStoragePath) != 0 {
-		coolStorage, _ := storage.NewCoolStorage(config.FileStoragePath)
-		memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(shortener.Shorten, coolStorage)
-		if err := memoryRepository.Load(context.Background()); err != nil {
-			fmt.Println(err)
-		}
-	} else {
-		memoryRepository = storage.NewMemoryRepository(shortener.Shorten)
+	if len(*databasePtr) != 0 {
+		config.DatabaseDSN = *databasePtr
 	}
-	defer memoryRepository.Close()
-	app := server.NewServer(memoryRepository, config)
+
+	var app server.Server
+	var postgresRepository *storage.PostgresRepository
+	var memoryRepository *storage.MemoryRepository
+
+	if len(config.DatabaseDSN) != 0 {
+		postgresRepository, err = storage.NewPostgresRepository(
+			context.Background(),
+			config.DatabaseDSN,
+			misc.Shorten,
+			misc.UUID,
+		)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		app = server.NewServer(postgresRepository, postgresRepository, config)
+	} else {
+		if len(config.FileStoragePath) != 0 {
+			coolStorage, _ := storage.NewCoolStorage(config.FileStoragePath)
+			memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(
+				misc.Shorten,
+				misc.UUID,
+				coolStorage,
+			)
+			if err = memoryRepository.Load(context.Background()); err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			memoryRepository = storage.NewMemoryRepository(
+				misc.Shorten,
+				misc.UUID,
+			)
+		}
+		app = server.NewServer(memoryRepository, postgresRepository, config)
+	}
 
 	go func() {
 		app.ListenAndServer()
@@ -59,7 +91,14 @@ func main() {
 		syscall.SIGQUIT)
 	<-sigChan
 
-	if err := memoryRepository.Dump(context.Background()); err != nil {
-		fmt.Println(err)
+	if memoryRepository != nil {
+		if err = memoryRepository.Dump(context.Background()); err != nil {
+			fmt.Println(err)
+		}
+		memoryRepository.Close()
+	}
+
+	if postgresRepository != nil {
+		postgresRepository.Close()
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
@@ -21,8 +22,59 @@ type ShortenAPIResponse struct {
 	Result string `json:"result"`
 }
 
+type ShortenedListEntryAPIResponse struct {
+	Result string `json:"short_url"`
+	Origin string `json:"original_url"`
+}
+
+type ShortenBatchListEntryAPIRequest struct {
+	ID 		string `json:"correlation_id"`
+	Origin 	string `json:"original_url"`
+}
+
+type ShortenBatchListEntryAPIResponse struct {
+	ID 		string `json:"correlation_id"`
+	Result 	string `json:"short_url"`
+}
+
+func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
+	cookie, err := r.Cookie(s.config.AuthCookieName)
+
+	if err == nil {
+		validCookie, userID, _ := misc.Verify(s.config.AuthCookieKey, cookie.Value)
+
+		if validCookie {
+			_, err = s.repository.ShortenedList(r.Context(), userID)
+			if err == nil {
+				return userID, nil
+			}
+		}
+
+	} else if err != http.ErrNoCookie {
+		return "", err
+	}
+
+	userID, err := s.repository.Register(r.Context())
+	if err != nil {
+		return "", err
+	}
+	cookie = &http.Cookie{
+		Name:  s.config.AuthCookieName,
+		Value: misc.Sign(s.config.AuthCookieKey, userID),
+	}
+	http.SetCookie(w, cookie)
+
+	return userID, nil
+}
+
 func shortenHandler(s Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		var reader io.Reader
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
@@ -54,20 +106,39 @@ func shortenHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		id, err := s.repository.Shorten(r.Context(), origin)
+		urlID, inserted, err := s.repository.Shorten(r.Context(), origin)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = s.repository.Bind(r.Context(), urlID, userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, id)))
+
+		if inserted {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusConflict)
+		}
+
+		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
 	}
 }
 
 func shortenAPIHandler(s Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		var reader io.Reader
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
 			gz, err := gzip.NewReader(r.Body)
@@ -104,14 +175,20 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		id, err := s.repository.Shorten(r.Context(), origin)
+		urlID, inserted, err := s.repository.Shorten(r.Context(), origin)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = s.repository.Bind(r.Context(), urlID, userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		response := ShortenAPIResponse{
-			Result: fmt.Sprintf("%s/%s", s.config.BaseURL, id),
+			Result: fmt.Sprintf("%s/%s", s.config.BaseURL, urlID),
 		}
 		responseBytes, err := json.Marshal(&response)
 		if err != nil {
@@ -120,8 +197,58 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+
+		if inserted {
+			w.WriteHeader(http.StatusCreated)
+		} else {
+			w.WriteHeader(http.StatusConflict)
+		}
+
 		w.Write(responseBytes)
+	}
+}
+
+func shortenedListAPIHandler(s Server) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		urlIDs, err := s.repository.ShortenedList(r.Context(), userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if len(urlIDs) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+		} else {
+			var responseList []ShortenedListEntryAPIResponse
+
+			for _, urlID := range urlIDs {
+				origin, err := s.repository.Restore(r.Context(), urlID)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				responseList = append(responseList, ShortenedListEntryAPIResponse{
+					Result: fmt.Sprintf("%s/%s", s.config.BaseURL, urlID),
+					Origin: origin.String(),
+				})
+			}
+
+			responseBytes, err := json.Marshal(&responseList)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(responseBytes)
+		}
 	}
 }
 
@@ -148,6 +275,95 @@ func restoreHandler(s Server) http.HandlerFunc {
 	}
 }
 
+func pingHandler(s Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.postgres == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err := s.postgres.Ping(r.Context()); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
 func badRequestHandler(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, "Bad request", http.StatusBadRequest)
+}
+
+func shortenBatchAPIHandler(s Server) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var reader io.Reader
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			reader = gz
+			defer gz.Close()
+		} else {
+			reader = r.Body
+		}
+
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var requestList []ShortenBatchListEntryAPIRequest
+		if err = json.Unmarshal(body, &requestList); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var origins []*url.URL
+		for _, request := range requestList {
+			if len(request.Origin) == 0 {
+				http.Error(w, "URL was not provided", http.StatusBadRequest)
+				return
+			}
+
+			origin, err := url.Parse(request.Origin)
+			if err != nil{
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			origins = append(origins, origin)
+		}
+
+		ids, err := s.repository.ShortenBatch(r.Context(), origins, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var responseList []ShortenBatchListEntryAPIResponse
+		for i := 0; i < len(requestList); i++ {
+			response := ShortenBatchListEntryAPIResponse {
+				ID: 	requestList[i].ID,
+				Result: fmt.Sprintf("%s/%s", s.config.BaseURL, ids[i]),
+			}
+			responseList = append(responseList, response)
+		}
+
+		responseBytes, err := json.Marshal(&responseList)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBytes)
+	}
 }
