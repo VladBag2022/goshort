@@ -16,8 +16,6 @@ import (
 )
 
 func main() {
-	log.SetLevel(log.TraceLevel)
-
 	log.Trace("Read configuration from environment variables...")
 	config, err := server.NewConfig()
 	if err != nil{
