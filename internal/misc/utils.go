@@ -33,7 +33,7 @@ func Shorten(_ *url.URL) (string, error) {
 	return RandomString(10), nil
 }
 
-func Register() string {
+func UUID() string {
 	return uuid.New().String()
 }
 

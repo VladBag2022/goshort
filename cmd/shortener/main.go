@@ -52,7 +52,7 @@ func main() {
 			context.Background(),
 			config.DatabaseDSN,
 			misc.Shorten,
-			misc.Register,
+			misc.UUID,
 		)
 		if err != nil {
 			fmt.Println(err)
@@ -65,7 +65,7 @@ func main() {
 			coolStorage, _ := storage.NewCoolStorage(config.FileStoragePath)
 			memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(
 				misc.Shorten,
-				misc.Register,
+				misc.UUID,
 				coolStorage,
 			)
 			if err = memoryRepository.Load(context.Background()); err != nil {
@@ -74,7 +74,7 @@ func main() {
 		} else {
 			memoryRepository = storage.NewMemoryRepository(
 				misc.Shorten,
-				misc.Register,
+				misc.UUID,
 			)
 		}
 		app = server.NewServer(memoryRepository, postgresRepository, config)
