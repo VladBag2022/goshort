@@ -59,7 +59,8 @@ func (p *PostgresRepository) createSchema(ctx context.Context) error {
 	var tables = []string {
 		"CREATE TABLE IF NOT EXISTS shortened_urls (" +
 		"id TEXT PRIMARY KEY, " +
-		"url TEXT NOT NULL UNIQUE)",
+		"url TEXT NOT NULL UNIQUE, " +
+		"deleted BOOLEAN DEFAULT FALSE)",
 		"CREATE TABLE IF NOT EXISTS users (" +
 		"id TEXT PRIMARY KEY)",
 		"CREATE TABLE IF NOT EXISTS users_url_m2m (" +
