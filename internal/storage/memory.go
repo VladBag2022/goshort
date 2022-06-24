@@ -53,12 +53,12 @@ func (m *MemoryRepository) Shorten(_ context.Context, origin *url.URL) (string, 
 	return id, true, nil
 }
 
-func (m *MemoryRepository) Restore(_ context.Context, id string) (*url.URL, error) {
+func (m *MemoryRepository) Restore(_ context.Context, id string) (*url.URL, bool, error) {
 	origin, ok := m.urls.Load(id)
 	if !ok {
-		return nil, NewUnknownIDError(fmt.Sprintf("url: %s", id))
+		return nil, false, NewUnknownIDError(fmt.Sprintf("url: %s", id))
 	}
-	return origin.(*url.URL), nil
+	return origin.(*url.URL), false, nil
 }
 
 func (m *MemoryRepository) Load(_ context.Context) error {
@@ -93,7 +93,7 @@ func (m *MemoryRepository) Dump(ctx context.Context) error {
 	var records []*CoolStorageRecord
 	m.userUrls.Range(func(userID, urlIDs interface{}) bool {
 		for _, urlID := range urlIDs.([]string) {
-			originURL, err := m.Restore(ctx, urlID)
+			originURL, _, err := m.Restore(ctx, urlID)
 			if err != nil {
 				return true
 			}

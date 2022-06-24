@@ -9,17 +9,17 @@ type Repository interface {
 	Shorten(
 		ctx 	context.Context,
 		origin  *url.URL,
-	) (string, bool, error)
+	) (id string, created bool, err error)
 
 	Restore(
 		ctx context.Context,
 		id 	string,
-	) (*url.URL, error)
+	) (origin *url.URL, deleted bool, err error)
 
 	Load(ctx context.Context) error
 	Dump(ctx context.Context) error
 
-	Register(ctx context.Context) (string, error)
+	Register(ctx context.Context) (id string, err error)
 	Bind(
 		ctx 	context.Context,
 		urlID 	string,
@@ -29,13 +29,13 @@ type Repository interface {
 	ShortenedList(
 		ctx context.Context,
 		id  string,
-	) ([]string, error)
+	) (ids []string, err error)
 
 	ShortenBatch(
 		ctx 		context.Context,
 		origins		[]*url.URL,
 		userID 		string,
-	) ([]string, error)
+	) (ids []string, err error)
 
 	Close() []error
 }

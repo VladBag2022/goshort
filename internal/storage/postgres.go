@@ -142,18 +142,23 @@ func (p *PostgresRepository) Shorten(ctx context.Context, origin *url.URL) (stri
 	return id, true, nil
 }
 
-func (p *PostgresRepository) Restore(ctx context.Context, id string) (*url.URL, error) {
+func (p *PostgresRepository) Restore(ctx context.Context, id string) (*url.URL, bool, error) {
 	var origin string
-	row := p.database.QueryRowContext(ctx, "SELECT url FROM shortened_urls WHERE id = $1", id)
+	var deleted bool
+	row := p.database.QueryRowContext(ctx, "SELECT url, deleted FROM shortened_urls WHERE id = $1", id)
 	err := row.Scan(&origin)
 	if err != nil {
-		return nil, err
+		return nil, false, err
+	}
+	err = row.Scan(&deleted)
+	if err != nil {
+		return nil, false, err
 	}
 	originURL, err := url.Parse(origin)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return originURL, nil
+	return originURL, deleted, nil
 }
 
 func (p *PostgresRepository) Load(_ context.Context) error {
