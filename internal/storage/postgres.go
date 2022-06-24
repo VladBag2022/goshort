@@ -146,11 +146,7 @@ func (p *PostgresRepository) Restore(ctx context.Context, id string) (*url.URL, 
 	var origin string
 	var deleted bool
 	row := p.database.QueryRowContext(ctx, "SELECT url, deleted FROM shortened_urls WHERE id = $1", id)
-	err := row.Scan(&origin)
-	if err != nil {
-		return nil, false, err
-	}
-	err = row.Scan(&deleted)
+	err := row.Scan(&origin, &deleted)
 	if err != nil {
 		return nil, false, err
 	}
