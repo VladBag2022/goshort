@@ -171,9 +171,14 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 		close(inputCh)
 	}()
 
+	workers := p.workersPerTask
+	if len(ids) < workers {
+		workers = len(ids)
+	}
+
 	// здесь fanOut
-	fanOutChs := misc.FanOut(inputCh, p.workersPerTask)
-	workerChs := make([]chan interface{}, 0, p.workersPerTask)
+	fanOutChs := misc.FanOut(inputCh, workers)
+	workerChs := make([]chan interface{}, 0, workers)
 	for _, fanOutCh := range fanOutChs {
 		workerCh := make(chan interface{})
 

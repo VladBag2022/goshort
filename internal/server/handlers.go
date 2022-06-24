@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -201,7 +202,7 @@ func deleteAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		go s.repository.Delete(r.Context(), userID, request)
+		go s.repository.Delete(context.Background(), userID, request)
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
