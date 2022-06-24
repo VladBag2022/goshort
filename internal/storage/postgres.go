@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/VladBag2022/goshort/internal/misc"
 	"net/url"
 
 	"github.com/jackc/pgconn"
@@ -13,9 +14,10 @@ import (
 )
 
 type PostgresRepository struct {
-	database      *sql.DB
-	shortenFn     func(*url.URL) (string, error)
-	registerFn    func() string
+	database      	*sql.DB
+	shortenFn     	func(*url.URL) (string, error)
+	registerFn    	func() string
+	workersPerTask	int
 }
 
 func NewPostgresRepository(
@@ -29,9 +31,10 @@ func NewPostgresRepository(
 		return nil, err
 	}
 	var p = &PostgresRepository{
-		database:      db,
-		shortenFn:     shortenFn,
-		registerFn:    registerFn,
+		database:      	db,
+		shortenFn:     	shortenFn,
+		registerFn:    	registerFn,
+		workersPerTask: 10,
 	}
 	err = p.createSchema(ctx)
 	return p, err
@@ -157,8 +160,73 @@ func (p *PostgresRepository) Restore(ctx context.Context, id string) (*url.URL, 
 	return originURL, deleted, nil
 }
 
-func (p *PostgresRepository) Delete(_ context.Context, _ string, _ []string) error {
-	return fmt.Errorf("not realised")
+func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []string) error {
+	inputCh := make(chan interface{})
+
+	// генерируем входные значения и кладём в inputCh
+	go func() {
+		for _, id := range ids {
+			inputCh <- id
+		}
+		close(inputCh)
+	}()
+
+	// здесь fanOut
+	fanOutChs := misc.FanOut(inputCh, p.workersPerTask)
+	workerChs := make([]chan interface{}, 0, p.workersPerTask)
+	for _, fanOutCh := range fanOutChs {
+		workerCh := make(chan interface{})
+
+		func (input, out chan interface{}) {
+			go func() {
+				for urlID := range input {
+					exists, err := p.bindingExists(ctx, urlID.(string), userID)
+					if err != nil {
+						// log
+						continue
+					}
+					if exists {
+						out <- urlID
+					}
+				}
+
+				close(out)
+			}()
+		}(fanOutCh, workerCh)
+
+		workerChs = append(workerChs, workerCh)
+	}
+
+	// шаг 1 — объявляем транзакцию
+	tx, err := p.database.Begin()
+	if err != nil {
+		return err
+	}
+	// шаг 1.1 — если возникает ошибка, откатываем изменения
+	defer tx.Rollback()
+
+	// шаг 2 — готовим инструкцию
+	updateStmt, err := tx.PrepareContext(ctx, "UPDATE shortened_urls SET deleted = TRUE WHERE id = $1")
+	if err != nil {
+		return err
+	}
+	defer updateStmt.Close()
+
+	// здесь fanIn
+	for v := range misc.FanIn(workerChs...) {
+		if _, err = updateStmt.ExecContext(ctx, v.(string)); err != nil {
+			if err := tx.Rollback(); err != nil {
+				return err
+			}
+			return err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *PostgresRepository) Load(_ context.Context) error {
