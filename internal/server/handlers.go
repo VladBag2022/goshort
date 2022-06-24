@@ -181,6 +181,31 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 	}
 }
 
+func deleteAPIHandler(s Server) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var request []string
+		if err = json.Unmarshal(body, &request); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		go s.repository.Delete(r.Context(), userID, request)
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
 func shortenedListAPIHandler(s Server) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
 		userID, err := authCookieHelper(s, w, r)

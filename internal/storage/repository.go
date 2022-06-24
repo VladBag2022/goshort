@@ -16,6 +16,12 @@ type Repository interface {
 		id 	string,
 	) (origin *url.URL, deleted bool, err error)
 
+	Delete(
+		ctx 	context.Context,
+		userID 	string,
+		urlIDs 	[]string,
+	) error
+
 	Load(ctx context.Context) error
 	Dump(ctx context.Context) error
 

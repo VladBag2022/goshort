@@ -61,6 +61,10 @@ func (m *MemoryRepository) Restore(_ context.Context, id string) (*url.URL, bool
 	return origin.(*url.URL), false, nil
 }
 
+func (m *MemoryRepository) Delete(_ context.Context, _ string, _ []string) error {
+	return nil
+}
+
 func (m *MemoryRepository) Load(_ context.Context) error {
 	if m.coolStorage == nil {
 		return NewNoCoolStorageError("MemoryRepository")

@@ -157,6 +157,10 @@ func (p *PostgresRepository) Restore(ctx context.Context, id string) (*url.URL, 
 	return originURL, deleted, nil
 }
 
+func (p *PostgresRepository) Delete(_ context.Context, _ string, _ []string) error {
+	return nil
+}
+
 func (p *PostgresRepository) Load(_ context.Context) error {
 	return nil
 }
