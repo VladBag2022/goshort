@@ -228,7 +228,7 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 			var responseList []ShortenedListEntryAPIResponse
 
 			for _, urlID := range urlIDs {
-				origin, err := s.repository.Restore(r.Context(), urlID)
+				origin, _, err := s.repository.Restore(r.Context(), urlID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -260,13 +260,18 @@ func restoreHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		origin, err := s.repository.Restore(r.Context(), id)
+		origin, deleted, err := s.repository.Restore(r.Context(), id)
 		if err != nil {
 			if _, ok := err.(*storage.UnknownIDError); ok {
 				http.Error(w, "Unknown id", http.StatusBadRequest)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if deleted {
+			w.WriteHeader(http.StatusGone)
 			return
 		}
 
