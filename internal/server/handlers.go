@@ -1,7 +1,6 @@
 package server
 
 import (
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -75,20 +74,7 @@ func shortenHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		var reader io.Reader
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gz
-			defer gz.Close()
-		} else {
-			reader = r.Body
-		}
-
-		body, err := io.ReadAll(reader)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -139,20 +125,7 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		var reader io.Reader
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gz
-			defer gz.Close()
-		} else {
-			reader = r.Body
-		}
-
-		body, err := io.ReadAll(reader)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -305,20 +278,7 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		var reader io.Reader
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gz
-			defer gz.Close()
-		} else {
-			reader = r.Body
-		}
-
-		body, err := io.ReadAll(reader)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
