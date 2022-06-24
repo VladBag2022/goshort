@@ -158,7 +158,7 @@ func (p *PostgresRepository) Restore(ctx context.Context, id string) (*url.URL, 
 }
 
 func (p *PostgresRepository) Delete(_ context.Context, _ string, _ []string) error {
-	return nil
+	return fmt.Errorf("not realised")
 }
 
 func (p *PostgresRepository) Load(_ context.Context) error {
