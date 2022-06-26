@@ -114,7 +114,10 @@ func shortenHandler(s Server) http.HandlerFunc {
 			w.WriteHeader(http.StatusConflict)
 		}
 
-		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
+		_, err = w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
+		if err != nil {
+			// log in prod
+		}
 	}
 }
 
@@ -178,7 +181,10 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 			w.WriteHeader(http.StatusConflict)
 		}
 
-		w.Write(responseBytes)
+		_, err = w.Write(responseBytes)
+		if err != nil {
+			// log in prod
+		}
 	}
 }
 
@@ -202,7 +208,12 @@ func deleteAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		go s.repository.Delete(context.Background(), userID, request)
+		go func() {
+			err = s.repository.Delete(context.Background(), userID, request)
+			if err != nil {
+				// log in prod
+			}
+		}()
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
@@ -227,9 +238,9 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 			var responseList []ShortenedListEntryAPIResponse
 
 			for _, urlID := range urlIDs {
-				origin, _, err := s.repository.Restore(r.Context(), urlID)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+				origin, _, restoreErr := s.repository.Restore(r.Context(), urlID)
+				if restoreErr != nil {
+					http.Error(w, restoreErr.Error(), http.StatusInternalServerError)
 					return
 				}
 
@@ -239,14 +250,17 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 				})
 			}
 
-			responseBytes, err := json.Marshal(&responseList)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			responseBytes, marshalErr := json.Marshal(&responseList)
+			if marshalErr != nil {
+				http.Error(w, marshalErr.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			w.Write(responseBytes)
+			_, err = w.Write(responseBytes)
+			if err != nil {
+				// log in prod
+			}
 		}
 	}
 }
@@ -323,9 +337,9 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 				return
 			}
 
-			origin, err := url.Parse(request.Origin)
-			if err != nil{
-				http.Error(w, err.Error(), http.StatusBadRequest)
+			origin, parseErr := url.Parse(request.Origin)
+			if parseErr != nil{
+				http.Error(w, parseErr.Error(), http.StatusBadRequest)
 				return
 			}
 
@@ -355,6 +369,9 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write(responseBytes)
+		_, err = w.Write(responseBytes)
+		if err != nil {
+			// log in prod
+		}
 	}
 }
