@@ -1,7 +1,7 @@
 package server
 
 import (
-	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -75,20 +75,7 @@ func shortenHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		var reader io.Reader
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gz
-			defer gz.Close()
-		} else {
-			reader = r.Body
-		}
-
-		body, err := io.ReadAll(reader)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -127,7 +114,10 @@ func shortenHandler(s Server) http.HandlerFunc {
 			w.WriteHeader(http.StatusConflict)
 		}
 
-		w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
+		_, err = w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
+		if err != nil {
+			// log in prod
+		}
 	}
 }
 
@@ -139,20 +129,7 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		var reader io.Reader
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gz
-			defer gz.Close()
-		} else {
-			reader = r.Body
-		}
-
-		body, err := io.ReadAll(reader)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -204,7 +181,40 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 			w.WriteHeader(http.StatusConflict)
 		}
 
-		w.Write(responseBytes)
+		_, err = w.Write(responseBytes)
+		if err != nil {
+			// log in prod
+		}
+	}
+}
+
+func deleteAPIHandler(s Server) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		userID, err := authCookieHelper(s, w, r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var request []string
+		if err = json.Unmarshal(body, &request); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		go func() {
+			err = s.repository.Delete(context.Background(), userID, request)
+			if err != nil {
+				// log in prod
+			}
+		}()
+		w.WriteHeader(http.StatusAccepted)
 	}
 }
 
@@ -228,9 +238,9 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 			var responseList []ShortenedListEntryAPIResponse
 
 			for _, urlID := range urlIDs {
-				origin, err := s.repository.Restore(r.Context(), urlID)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+				origin, _, restoreErr := s.repository.Restore(r.Context(), urlID)
+				if restoreErr != nil {
+					http.Error(w, restoreErr.Error(), http.StatusInternalServerError)
 					return
 				}
 
@@ -240,14 +250,17 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 				})
 			}
 
-			responseBytes, err := json.Marshal(&responseList)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			responseBytes, marshalErr := json.Marshal(&responseList)
+			if marshalErr != nil {
+				http.Error(w, marshalErr.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			w.Write(responseBytes)
+			_, err = w.Write(responseBytes)
+			if err != nil {
+				// log in prod
+			}
 		}
 	}
 }
@@ -260,13 +273,18 @@ func restoreHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		origin, err := s.repository.Restore(r.Context(), id)
+		origin, deleted, err := s.repository.Restore(r.Context(), id)
 		if err != nil {
 			if _, ok := err.(*storage.UnknownIDError); ok {
 				http.Error(w, "Unknown id", http.StatusBadRequest)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if deleted {
+			w.WriteHeader(http.StatusGone)
 			return
 		}
 
@@ -300,20 +318,7 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		var reader io.Reader
-		if r.Header.Get(`Content-Encoding`) == `gzip` {
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			reader = gz
-			defer gz.Close()
-		} else {
-			reader = r.Body
-		}
-
-		body, err := io.ReadAll(reader)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -332,9 +337,9 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 				return
 			}
 
-			origin, err := url.Parse(request.Origin)
-			if err != nil{
-				http.Error(w, err.Error(), http.StatusBadRequest)
+			origin, parseErr := url.Parse(request.Origin)
+			if parseErr != nil{
+				http.Error(w, parseErr.Error(), http.StatusBadRequest)
 				return
 			}
 
@@ -364,6 +369,9 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write(responseBytes)
+		_, err = w.Write(responseBytes)
+		if err != nil {
+			// log in prod
+		}
 	}
 }

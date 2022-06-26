@@ -13,6 +13,8 @@ func router(s Server) chi.Router {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+
+	r.Use(DecompressGZIP)
 	r.Use(gziphandler.GzipHandler)
 
 	r.Get("/{id}", restoreHandler(s))
@@ -20,6 +22,7 @@ func router(s Server) chi.Router {
 	r.Post("/api/shorten", shortenAPIHandler(s))
 	r.Post("/api/shorten/batch", shortenBatchAPIHandler(s))
 	r.Get("/api/user/urls", shortenedListAPIHandler(s))
+	r.Delete("/api/user/urls", deleteAPIHandler(s))
 	r.Get("/ping", pingHandler(s))
 	r.MethodNotAllowed(badRequestHandler)
 	r.NotFound(badRequestHandler)

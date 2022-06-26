@@ -7,12 +7,12 @@ import (
 )
 
 type Config struct {
-	Address 		string 	`env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
-	BaseURL 		string	`env:"BASE_URL"`
-	FileStoragePath string 	`env:"FILE_STORAGE_PATH"`
-	AuthCookieName  string  `env:"AUTH_COOKIE" envDefault:"X-AUTH"`
-	AuthCookieKey 	string 	`env:"AUTH_KEY" envDefault:"gopher"`
-	DatabaseDSN 	string 	`env:"DATABASE_DSN"`
+	Address         string `env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
+	BaseURL         string `env:"BASE_URL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	AuthCookieName  string `env:"AUTH_COOKIE" envDefault:"X-AUTH"`
+	AuthCookieKey   string `env:"AUTH_KEY" envDefault:"gopher"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
 func NewConfig() (*Config, error) {

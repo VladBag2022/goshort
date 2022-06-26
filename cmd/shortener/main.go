@@ -18,13 +18,13 @@ import (
 func main() {
 	log.Trace("Read configuration from environment variables...")
 	config, err := server.NewConfig()
-	if err != nil{
+	if err != nil {
 		log.Error(fmt.Sprintf("Unable to read configuration from environment variables: %s", err))
 		return
 	}
 
 	log.Trace("Read configuration from command line arguments...")
-	serverAddressPtr := flag.StringP("address", "a", "","server address: host:port")
+	serverAddressPtr := flag.StringP("address", "a", "", "server address: host:port")
 	baseURLPtr := flag.StringP("base", "b", "", "base url for URL misc")
 	fileStoragePathPtr := flag.StringP("file", "f", "", "file storage path")
 	databasePtr := flag.StringP("database", "d", "", "database DSN")
