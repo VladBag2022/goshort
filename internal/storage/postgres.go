@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/VladBag2022/goshort/internal/misc"
 	"net/url"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	_ "github.com/jackc/pgx/v4/stdlib"
+
+	"github.com/VladBag2022/goshort/internal/misc"
 )
 
 type PostgresRepository struct {
