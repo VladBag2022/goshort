@@ -15,12 +15,12 @@ func (e *UnknownIDError) Error() string {
 }
 
 type noCoolStorageError struct {
-	repositoryType	string
+	repositoryType string
 }
 
-func NewNoCoolStorageError(repositoryType	string) error {
+func NewNoCoolStorageError(repositoryType string) error {
 	return &noCoolStorageError{
-		repositoryType:	repositoryType,
+		repositoryType: repositoryType,
 	}
 }
 

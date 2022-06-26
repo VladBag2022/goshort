@@ -7,9 +7,9 @@ import (
 )
 
 type CoolStorageRecord struct {
-	Origin string	`json:"origin"`
-	ID     string	`json:"id"`
-	User   string	`json:"user"`
+	Origin string `json:"origin"`
+	ID     string `json:"id"`
+	User   string `json:"user"`
 }
 
 type coolStorageWriter struct {

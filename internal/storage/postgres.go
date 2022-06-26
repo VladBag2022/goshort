@@ -15,26 +15,26 @@ import (
 )
 
 type PostgresRepository struct {
-	database      	*sql.DB
-	shortenFn     	func(*url.URL) (string, error)
-	registerFn    	func() string
-	workersPerTask	int
+	database       *sql.DB
+	shortenFn      func(*url.URL) (string, error)
+	registerFn     func() string
+	workersPerTask int
 }
 
 func NewPostgresRepository(
-	ctx 			context.Context,
-	databaseDSN 	string,
-	shortenFn 		func(*url.URL) (string, error),
-	registerFn 		func() string,
+	ctx context.Context,
+	databaseDSN string,
+	shortenFn func(*url.URL) (string, error),
+	registerFn func() string,
 ) (*PostgresRepository, error) {
 	db, err := sql.Open("pgx", databaseDSN)
 	if err != nil {
 		return nil, err
 	}
 	var p = &PostgresRepository{
-		database:      	db,
-		shortenFn:     	shortenFn,
-		registerFn:    	registerFn,
+		database:       db,
+		shortenFn:      shortenFn,
+		registerFn:     registerFn,
 		workersPerTask: 10,
 	}
 	err = p.createSchema(ctx)
@@ -60,17 +60,17 @@ func (p *PostgresRepository) Ping(ctx context.Context) error {
 }
 
 func (p *PostgresRepository) createSchema(ctx context.Context) error {
-	var tables = []string {
+	var tables = []string{
 		"CREATE TABLE IF NOT EXISTS shortened_urls (" +
-		"id TEXT PRIMARY KEY, " +
-		"url TEXT NOT NULL UNIQUE, " +
-		"deleted BOOLEAN DEFAULT FALSE)",
+			"id TEXT PRIMARY KEY, " +
+			"url TEXT NOT NULL UNIQUE, " +
+			"deleted BOOLEAN DEFAULT FALSE)",
 		"CREATE TABLE IF NOT EXISTS users (" +
-		"id TEXT PRIMARY KEY)",
+			"id TEXT PRIMARY KEY)",
 		"CREATE TABLE IF NOT EXISTS users_url_m2m (" +
-		"user_id TEXT," +
-		"url_id TEXT," +
-		"PRIMARY KEY (user_id, url_id))",
+			"user_id TEXT," +
+			"url_id TEXT," +
+			"PRIMARY KEY (user_id, url_id))",
 	}
 	for _, table := range tables {
 		_, err := p.database.ExecContext(ctx, table)
@@ -183,7 +183,7 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 	for _, fanOutCh := range fanOutChs {
 		workerCh := make(chan interface{})
 
-		func (input, out chan interface{}) {
+		func(input, out chan interface{}) {
 			go func() {
 				for urlID := range input {
 					exists, err := p.bindingExists(ctx, urlID.(string), userID)
@@ -209,7 +209,12 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 		return err
 	}
 	// шаг 1.1 — если возникает ошибка, откатываем изменения
-	defer tx.Rollback()
+	defer func(tx *sql.Tx) {
+		err = tx.Rollback()
+		if err != nil {
+			// log in prod
+		}
+	}(tx)
 
 	// шаг 2 — готовим инструкцию
 	updateStmt, err := tx.PrepareContext(ctx, "UPDATE shortened_urls SET deleted = TRUE WHERE id = $1")
@@ -221,7 +226,7 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 	// здесь fanIn
 	for v := range misc.FanIn(workerChs...) {
 		if _, err = updateStmt.ExecContext(ctx, v.(string)); err != nil {
-			if err := tx.Rollback(); err != nil {
+			if err = tx.Rollback(); err != nil {
 				return err
 			}
 			return err
@@ -274,7 +279,7 @@ func (p *PostgresRepository) Register(ctx context.Context) (string, error) {
 
 func (p *PostgresRepository) bindingExists(ctx context.Context, urlID, userID string) (bool, error) {
 	var count int64
-	row := p.database.QueryRowContext(ctx, "SELECT COUNT(*) FROM users_url_m2m " +
+	row := p.database.QueryRowContext(ctx, "SELECT COUNT(*) FROM users_url_m2m "+
 		"WHERE user_id = $1 AND url_id = $2", userID, urlID)
 	err := row.Scan(&count)
 	if err != nil {
@@ -284,9 +289,9 @@ func (p *PostgresRepository) bindingExists(ctx context.Context, urlID, userID st
 }
 
 func (p *PostgresRepository) Bind(
-	ctx 	context.Context,
-	urlID 	string,
-	userID 	string,
+	ctx context.Context,
+	urlID string,
+	userID string,
 ) error {
 	exists, err := p.bindingExists(ctx, urlID, userID)
 	if err != nil {
@@ -320,7 +325,7 @@ func (p *PostgresRepository) Bind(
 
 func (p *PostgresRepository) ShortenedList(
 	ctx context.Context,
-	id  string,
+	id string,
 ) ([]string, error) {
 	exists, err := p.userExists(ctx, id)
 	if err != nil {
@@ -332,10 +337,10 @@ func (p *PostgresRepository) ShortenedList(
 
 	urls := []string{}
 
-	rows, err := p.database.QueryContext(ctx, "SELECT shortened_urls.id " +
-		"FROM shortened_urls " +
-		"JOIN users_url_m2m " +
-		"ON shortened_urls.id = users_url_m2m.url_id " +
+	rows, err := p.database.QueryContext(ctx, "SELECT shortened_urls.id "+
+		"FROM shortened_urls "+
+		"JOIN users_url_m2m "+
+		"ON shortened_urls.id = users_url_m2m.url_id "+
 		"AND users_url_m2m.user_id = $1", id)
 	if err != nil {
 		return []string{}, err
@@ -364,9 +369,9 @@ func (p *PostgresRepository) ShortenedList(
 }
 
 func (p *PostgresRepository) ShortenBatch(
-	ctx			context.Context,
-	origins		[]*url.URL,
-	userID 		string,
+	ctx context.Context,
+	origins []*url.URL,
+	userID string,
 ) ([]string, error) {
 	exists, err := p.userExists(ctx, userID)
 	if err != nil {
@@ -391,7 +396,12 @@ func (p *PostgresRepository) ShortenBatch(
 		return nil, err
 	}
 	// шаг 1.1 — если возникает ошибка, откатываем изменения
-	defer tx.Rollback()
+	defer func(tx *sql.Tx) {
+		err = tx.Rollback()
+		if err != nil {
+			// log in prod
+		}
+	}(tx)
 
 	// шаг 2 — готовим инструкцию
 	insertURLStmt, err := tx.PrepareContext(ctx, "INSERT INTO shortened_urls (id, url) VALUES ($1, $2)")

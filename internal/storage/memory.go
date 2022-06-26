@@ -8,32 +8,32 @@ import (
 )
 
 type MemoryRepository struct {
-	urls      		sync.Map
-	userUrls 		sync.Map
-	shortenFn 		func(*url.URL) (string, error)
-	registerFn 		func() string
-	coolStorage		*CoolStorage
+	urls        sync.Map
+	userUrls    sync.Map
+	shortenFn   func(*url.URL) (string, error)
+	registerFn  func() string
+	coolStorage *CoolStorage
 }
 
 func NewMemoryRepository(
-	shortenFn 		func(*url.URL) (string, error),
-	registerFn 		func() string,
+	shortenFn func(*url.URL) (string, error),
+	registerFn func() string,
 ) *MemoryRepository {
 	return &MemoryRepository{
-		shortenFn: 	shortenFn,
+		shortenFn:  shortenFn,
 		registerFn: registerFn,
 	}
 }
 
 func NewMemoryRepositoryWithCoolStorage(
-	shortenFn 		func(*url.URL) (string, error),
-	registerFn 		func() string,
-	coolStorage 	*CoolStorage,
+	shortenFn func(*url.URL) (string, error),
+	registerFn func() string,
+	coolStorage *CoolStorage,
 ) *MemoryRepository {
 	return &MemoryRepository{
-		shortenFn: 		shortenFn,
-		registerFn:     registerFn,
-		coolStorage: 	coolStorage,
+		shortenFn:   shortenFn,
+		registerFn:  registerFn,
+		coolStorage: coolStorage,
 	}
 }
 
@@ -103,8 +103,8 @@ func (m *MemoryRepository) Dump(ctx context.Context) error {
 			}
 			records = append(records, &CoolStorageRecord{
 				Origin: originURL.String(),
-				ID: 	urlID,
-				User: 	userID.(string),
+				ID:     urlID,
+				User:   userID.(string),
 			})
 		}
 		return true
@@ -126,9 +126,9 @@ func (m *MemoryRepository) Register(_ context.Context) (string, error) {
 }
 
 func (m *MemoryRepository) Bind(
-	_ 	 	context.Context,
-	urlID 	string,
-	userID 	string,
+	_ context.Context,
+	urlID string,
+	userID string,
 ) error {
 	urls, ok := m.userUrls.Load(userID)
 	if !ok {
@@ -151,7 +151,7 @@ func (m *MemoryRepository) Bind(
 
 func (m *MemoryRepository) ShortenedList(
 	_ context.Context,
-	id  string,
+	id string,
 ) ([]string, error) {
 	urls, ok := m.userUrls.Load(id)
 	if !ok {
@@ -173,9 +173,9 @@ func (m *MemoryRepository) Close() []error {
 }
 
 func (m *MemoryRepository) ShortenBatch(
-	ctx			context.Context,
-	origins		[]*url.URL,
-	userID 		string,
+	ctx context.Context,
+	origins []*url.URL,
+	userID string,
 ) ([]string, error) {
 	var ids []string
 	for _, origin := range origins {
