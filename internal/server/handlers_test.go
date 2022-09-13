@@ -43,29 +43,29 @@ func TestServer_shorten(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int
-		response 	bool
+		response    bool
 	}
 	tests := []struct {
 		name    string
 		content string
-		want want
+		want    want
 	}{
 		{
-			name: 		"positive test",
-			content: 	"https://example.com",
+			name:    "positive test",
+			content: "https://example.com",
 			want: want{
-				contentType: 	"text/plain; charset=utf-8",
-				statusCode: 	201,
-				response: 		true,
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  201,
+				response:    true,
 			},
 		},
 		{
-			name: 		"negative test",
-			content: 	"",
+			name:    "negative test",
+			content: "",
 			want: want{
-				contentType: 	"text/plain; charset=utf-8",
-				statusCode: 	400,
-				response: 		true,
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  400,
+				response:    true,
 			},
 		},
 	}
@@ -100,29 +100,29 @@ func TestServer_api_shorten(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int
-		response 	bool
+		response    bool
 	}
 	tests := []struct {
 		name    string
 		content string
-		want want
+		want    want
 	}{
 		{
-			name: 		"positive test",
-			content: 	"{\"url\":\"https://example.com\"}",
+			name:    "positive test",
+			content: "{\"url\":\"https://example.com\"}",
 			want: want{
-				contentType: 	"application/json",
-				statusCode: 	201,
-				response: 		true,
+				contentType: "application/json",
+				statusCode:  201,
+				response:    true,
 			},
 		},
 		{
-			name: 		"negative test",
-			content: 	"{\"link\":\"https://example.com\"}",
+			name:    "negative test",
+			content: "{\"link\":\"https://example.com\"}",
 			want: want{
-				contentType: 	"text/plain; charset=utf-8",
-				statusCode: 	400,
-				response: 		true,
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  400,
+				response:    true,
 			},
 		},
 	}
@@ -130,7 +130,7 @@ func TestServer_api_shorten(t *testing.T) {
 	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
 	defer mem.Close()
 	c, err := NewConfig()
-	if err != nil{
+	if err != nil {
 		require.NoError(t, err)
 	}
 	s := NewServer(mem, nil, c)
@@ -154,31 +154,31 @@ func TestServer_api_shorten(t *testing.T) {
 
 func TestServer_restore(t *testing.T) {
 	type want struct {
-		location    string
-		statusCode  int
+		location   string
+		statusCode int
 	}
 	tests := []struct {
-		name    string
-		origin  string
-		sameID  bool
-		want want
+		name   string
+		origin string
+		sameID bool
+		want   want
 	}{
 		{
-			name: 		"positive test",
-			origin: 	"https://example.com",
-			sameID:  	true,
+			name:   "positive test",
+			origin: "https://example.com",
+			sameID: true,
 			want: want{
-				location: 	    "https://example.com",
-				statusCode: 	307,
+				location:   "https://example.com",
+				statusCode: 307,
 			},
 		},
 		{
-			name: 		"negative test",
-			origin: 	"https://example.com",
-			sameID:  	false,
+			name:   "negative test",
+			origin: "https://example.com",
+			sameID: false,
 			want: want{
-				location: 	    "https://example.com",
-				statusCode: 	400,
+				location:   "https://example.com",
+				statusCode: 400,
 			},
 		},
 	}
@@ -193,7 +193,7 @@ func TestServer_restore(t *testing.T) {
 			require.NoError(t, err)
 
 			c, err := NewConfig()
-			if err != nil{
+			if err != nil {
 				require.NoError(t, err)
 			}
 			s := NewServer(mem, nil, c)

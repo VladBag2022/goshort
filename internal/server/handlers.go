@@ -28,13 +28,13 @@ type ShortenedListEntryAPIResponse struct {
 }
 
 type ShortenBatchListEntryAPIRequest struct {
-	ID 		string `json:"correlation_id"`
-	Origin 	string `json:"original_url"`
+	ID     string `json:"correlation_id"`
+	Origin string `json:"original_url"`
 }
 
 type ShortenBatchListEntryAPIResponse struct {
-	ID 		string `json:"correlation_id"`
-	Result 	string `json:"short_url"`
+	ID     string `json:"correlation_id"`
+	Result string `json:"short_url"`
 }
 
 func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
@@ -68,7 +68,7 @@ func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string,
 }
 
 func shortenHandler(s Server) http.HandlerFunc {
-	return func (w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := authCookieHelper(s, w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -88,13 +88,12 @@ func shortenHandler(s Server) http.HandlerFunc {
 		}
 
 		origin, err := url.Parse(content)
-		if err != nil{
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		urlID, inserted, err := s.repository.Shorten(r.Context(), origin)
-
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -122,7 +121,7 @@ func shortenHandler(s Server) http.HandlerFunc {
 }
 
 func shortenAPIHandler(s Server) http.HandlerFunc {
-	return func (w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := authCookieHelper(s, w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -147,7 +146,7 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 		}
 
 		origin, err := url.Parse(request.Origin)
-		if err != nil{
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -189,7 +188,7 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 }
 
 func deleteAPIHandler(s Server) http.HandlerFunc {
-	return func (w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := authCookieHelper(s, w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -219,7 +218,7 @@ func deleteAPIHandler(s Server) http.HandlerFunc {
 }
 
 func shortenedListAPIHandler(s Server) http.HandlerFunc {
-	return func (w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := authCookieHelper(s, w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -311,7 +310,7 @@ func badRequestHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func shortenBatchAPIHandler(s Server) http.HandlerFunc {
-	return func (w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := authCookieHelper(s, w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -338,7 +337,7 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 			}
 
 			origin, parseErr := url.Parse(request.Origin)
-			if parseErr != nil{
+			if parseErr != nil {
 				http.Error(w, parseErr.Error(), http.StatusBadRequest)
 				return
 			}
@@ -354,8 +353,8 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 
 		var responseList []ShortenBatchListEntryAPIResponse
 		for i := 0; i < len(requestList); i++ {
-			response := ShortenBatchListEntryAPIResponse {
-				ID: 	requestList[i].ID,
+			response := ShortenBatchListEntryAPIResponse{
+				ID:     requestList[i].ID,
 				Result: fmt.Sprintf("%s/%s", s.config.BaseURL, ids[i]),
 			}
 			responseList = append(responseList, response)

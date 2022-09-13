@@ -31,7 +31,7 @@ func NewPostgresRepository(
 	if err != nil {
 		return nil, err
 	}
-	var p = &PostgresRepository{
+	p := &PostgresRepository{
 		database:       db,
 		shortenFn:      shortenFn,
 		registerFn:     registerFn,
@@ -60,7 +60,7 @@ func (p *PostgresRepository) Ping(ctx context.Context) error {
 }
 
 func (p *PostgresRepository) createSchema(ctx context.Context) error {
-	var tables = []string{
+	tables := []string{
 		"CREATE TABLE IF NOT EXISTS shortened_urls (" +
 			"id TEXT PRIMARY KEY, " +
 			"url TEXT NOT NULL UNIQUE, " +
@@ -103,7 +103,7 @@ func (p *PostgresRepository) getURLID(ctx context.Context, origin *url.URL) (str
 }
 
 func (p *PostgresRepository) newURLID(ctx context.Context, origin *url.URL) (string, error) {
-	var id = ""
+	id := ""
 	for id == "" {
 		newID, err := p.shortenFn(origin)
 		if err != nil {
@@ -259,7 +259,7 @@ func (p *PostgresRepository) userExists(ctx context.Context, id string) (bool, e
 }
 
 func (p *PostgresRepository) Register(ctx context.Context) (string, error) {
-	var id = ""
+	id := ""
 	for id == "" {
 		newID := p.registerFn()
 		exists, err := p.userExists(ctx, newID)

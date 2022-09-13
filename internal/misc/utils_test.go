@@ -30,7 +30,7 @@ func TestSign(t *testing.T) {
 		{
 			name: "positive test",
 			args: args{
-				key: "123",
+				key:   "123",
 				value: "345",
 			},
 			want: "345|48cecbcac0ebb1d8bc0c395d5cc742c8f0eaf5e59696a8e0462ffa75990781df",
@@ -63,8 +63,8 @@ func TestVerify(t *testing.T) {
 				key: "123",
 				msg: "345|48cecbcac0ebb1d8bc0c395d5cc742c8f0eaf5e59696a8e0462ffa75990781df",
 			},
-			want: true,
-			want1: "345",
+			want:    true,
+			want1:   "345",
 			wantErr: false,
 		},
 		{
@@ -73,12 +73,12 @@ func TestVerify(t *testing.T) {
 				key: "123",
 				msg: "48cecbcac0ebb1d8bc0c395d5cc742c8f0eaf5e59696a8e0462ffa75990781df",
 			},
-			want: false,
-			want1: "",
+			want:    false,
+			want1:   "",
 			wantErr: true,
 		},
 	}
-		for _, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1, err := Verify(tt.args.key, tt.args.msg)
 			if (err != nil) != tt.wantErr {
@@ -116,11 +116,11 @@ func TestShorten(t *testing.T) {
 			args: args{
 				in0: testUrl,
 			},
-			want: 10,
+			want:    10,
 			wantErr: false,
 		},
 	}
-		for _, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Shorten(tt.args.in0)
 			if (err != nil) != tt.wantErr {
