@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// DecompressGZIP middleware check request for gzip compression and remove it.
 func DecompressGZIP(next http.Handler) http.Handler {
 	// приводим возвращаемую функцию к типу функций HandlerFunc
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

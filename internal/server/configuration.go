@@ -6,6 +6,7 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// Config stores application configuration.
 type Config struct {
 	Address         string `env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
 	BaseURL         string `env:"BASE_URL"`
@@ -15,6 +16,7 @@ type Config struct {
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
+// NewConfig parses environment variables and returns config.
 func NewConfig() (*Config, error) {
 	config := &Config{}
 	if err := env.Parse(config); err != nil {
