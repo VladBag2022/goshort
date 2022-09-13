@@ -17,6 +17,7 @@ func router(s Server) chi.Router {
 	r.Use(DecompressGZIP)
 	r.Use(gziphandler.GzipHandler)
 
+	r.Mount("/debug", middleware.Profiler())
 	r.Get("/{id}", restoreHandler(s))
 	r.Post("/", shortenHandler(s))
 	r.Post("/api/shorten", shortenAPIHandler(s))
