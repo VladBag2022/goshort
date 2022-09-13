@@ -21,7 +21,7 @@ func NewServer(repository storage.Repository, postgres *storage.PostgresReposito
 	}
 }
 
-func (s Server) ListenAndServer() {
+func (s Server) ListenAndServe() {
 	if err := http.ListenAndServe(s.config.Address, router(s)); err != nil {
 		fmt.Println(err)
 		return
