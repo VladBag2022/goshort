@@ -73,7 +73,7 @@ func (c *CoolStorage) Close() error {
 }
 
 func NewCoolStorageWriter(fileName string) (*coolStorageWriter, error) {
-	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0644)
+	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0o644)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func NewCoolStorageWriter(fileName string) (*coolStorageWriter, error) {
 }
 
 func NewCoolStorageReader(fileName string) (*coolStorageReader, error) {
-	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0644)
+	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0o644)
 	if err != nil {
 		return nil, err
 	}

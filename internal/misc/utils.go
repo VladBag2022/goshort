@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Sign creates string which contains the sign and the value.
 func Sign(key, value string) string {
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(value))
@@ -21,6 +22,7 @@ func Sign(key, value string) string {
 	return fmt.Sprintf("%s|%x", value, dst)
 }
 
+// Verify checks the validity of the message and extracts the value.
 func Verify(key, msg string) (bool, string, error) {
 	values := strings.Split(msg, "|")
 	if len(values) != 2 {
@@ -30,16 +32,19 @@ func Verify(key, msg string) (bool, string, error) {
 	return Sign(key, values[0]) == msg, values[0], nil
 }
 
+// Shorten returns possible ID for given URL.
 func Shorten(_ *url.URL) (string, error) {
 	return RandomString(10), nil
 }
 
+// UUID returns UUID.
 func UUID() string {
 	return uuid.New().String()
 }
 
+// RandomString generates random string of length N.
 func RandomString(n int) string {
-	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	letter := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 	b := make([]rune, n)
 	for i := range b {

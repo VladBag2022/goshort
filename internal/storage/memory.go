@@ -38,7 +38,7 @@ func NewMemoryRepositoryWithCoolStorage(
 }
 
 func (m *MemoryRepository) Shorten(_ context.Context, origin *url.URL) (string, bool, error) {
-	var id = ""
+	id := ""
 	for id == "" {
 		newID, err := m.shortenFn(origin)
 		if err != nil {
@@ -113,7 +113,7 @@ func (m *MemoryRepository) Dump(ctx context.Context) error {
 }
 
 func (m *MemoryRepository) Register(_ context.Context) (string, error) {
-	var id = ""
+	id := ""
 	for id == "" {
 		newID := m.registerFn()
 		_, ok := m.urls.Load(newID)

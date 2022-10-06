@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -81,7 +82,7 @@ func main() {
 	}
 
 	go func() {
-		app.ListenAndServer()
+		app.ListenAndServe()
 	}()
 
 	sigChan := make(chan os.Signal, 1)
