@@ -133,22 +133,3 @@ func TestShorten(t *testing.T) {
 		})
 	}
 }
-
-func TestUUID(t *testing.T) {
-	tests := []struct {
-		name string
-		want int
-	}{
-		{
-			name: "positive test",
-			want: 36,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := UUID(); len(got) != tt.want {
-				t.Errorf("UUID() = %v, want %v", len(got), tt.want)
-			}
-		})
-	}
-}
