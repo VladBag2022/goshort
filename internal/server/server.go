@@ -1,3 +1,4 @@
+// Package server contains HTTP API server.
 package server
 
 import (

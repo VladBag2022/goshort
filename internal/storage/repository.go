@@ -1,3 +1,4 @@
+// Package storage contains repository interface and different storage realisations.
 package storage
 
 import (

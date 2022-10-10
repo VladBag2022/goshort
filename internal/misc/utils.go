@@ -1,3 +1,4 @@
+// Package misc contains everything not suited for separate package.
 package misc
 
 import (
