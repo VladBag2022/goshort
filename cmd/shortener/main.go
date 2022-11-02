@@ -16,7 +16,26 @@ import (
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
+var (
+	buildVersion string
+	buildDate string
+	buildCommit string
+)
+
 func main() {
+	if len(buildVersion) == 0 {
+		buildVersion = "N/A"
+	}
+	if len(buildDate) == 0 {
+		buildDate = "N/A"
+	}
+	if len(buildCommit) == 0 {
+		buildCommit = "N/A"
+	}
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+
 	log.Trace("Read configuration from environment variables...")
 	config, err := server.NewConfig()
 	if err != nil {
