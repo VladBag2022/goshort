@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/storage"
@@ -115,7 +116,7 @@ func shortenHandler(s Server) http.HandlerFunc {
 
 		_, err = w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}
 }
@@ -182,7 +183,7 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 
 		_, err = w.Write(responseBytes)
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}
 }
@@ -210,7 +211,7 @@ func deleteAPIHandler(s Server) http.HandlerFunc {
 		go func() {
 			err = s.repository.Delete(context.Background(), userID, request)
 			if err != nil {
-				// log in prod
+				log.Error(err)
 			}
 		}()
 		w.WriteHeader(http.StatusAccepted)
@@ -258,7 +259,7 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 			w.Header().Set("Content-Type", "application/json")
 			_, err = w.Write(responseBytes)
 			if err != nil {
-				// log in prod
+				log.Error(err)
 			}
 		}
 	}
@@ -370,7 +371,7 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write(responseBytes)
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}
 }

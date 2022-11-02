@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/url"
 
+	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	_ "github.com/jackc/pgx/v4/stdlib"
-
-	"github.com/VladBag2022/goshort/internal/misc"
 )
 
 type PostgresRepository struct {
@@ -188,7 +188,7 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 				for urlID := range input {
 					exists, err := p.bindingExists(ctx, urlID.(string), userID)
 					if err != nil {
-						// log
+						log.Error(err)
 						continue
 					}
 					if exists {
@@ -212,7 +212,7 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 	defer func(tx *sql.Tx) {
 		err = tx.Rollback()
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}(tx)
 
@@ -383,9 +383,9 @@ func (p *PostgresRepository) ShortenBatch(
 
 	var ids []string
 	for _, origin := range origins {
-		id, err := p.newURLID(ctx, origin)
-		if err != nil {
-			return nil, err
+		id, uErr := p.newURLID(ctx, origin)
+		if uErr != nil {
+			return nil, uErr
 		}
 		ids = append(ids, id)
 	}
@@ -399,7 +399,7 @@ func (p *PostgresRepository) ShortenBatch(
 	defer func(tx *sql.Tx) {
 		err = tx.Rollback()
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}(tx)
 
@@ -417,14 +417,14 @@ func (p *PostgresRepository) ShortenBatch(
 
 	for i := 0; i < len(origins); i++ {
 		if _, err = insertURLStmt.ExecContext(ctx, ids[i], origins[i].String()); err != nil {
-			if err := tx.Rollback(); err != nil {
-				return nil, err
+			if rErr := tx.Rollback(); rErr != nil {
+				return nil, rErr
 			}
 			return nil, err
 		}
 		if _, err = bindStmt.ExecContext(ctx, userID, ids[i]); err != nil {
-			if err := tx.Rollback(); err != nil {
-				return nil, err
+			if rErr := tx.Rollback(); rErr != nil {
+				return nil, rErr
 			}
 			return nil, err
 		}
