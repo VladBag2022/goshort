@@ -96,7 +96,7 @@ func TestVerify(t *testing.T) {
 }
 
 func TestShorten(t *testing.T) {
-	testUrl, err := url.Parse("https://google.com")
+	testURL, err := url.Parse("https://google.com")
 	if err != nil {
 		t.Error(err)
 		return
@@ -114,7 +114,7 @@ func TestShorten(t *testing.T) {
 		{
 			name: "positive test",
 			args: args{
-				in0: testUrl,
+				in0: testURL,
 			},
 			want:    10,
 			wantErr: false,
