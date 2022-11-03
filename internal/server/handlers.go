@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -50,8 +51,7 @@ func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string,
 				return userID, nil
 			}
 		}
-
-	} else if err != http.ErrNoCookie {
+	} else if errors.Is(err, http.ErrNoCookie) {
 		return "", err
 	}
 
@@ -275,8 +275,9 @@ func restoreHandler(s Server) http.HandlerFunc {
 
 		origin, deleted, err := s.repository.Restore(r.Context(), id)
 		if err != nil {
-			if _, ok := err.(*storage.UnknownIDError); ok {
-				http.Error(w, "Unknown id", http.StatusBadRequest)
+			var unknownIDErr *storage.UnknownIDError
+			if errors.As(err, &unknownIDErr) {
+				http.Error(w, fmt.Sprintf("Unknown id: %s", unknownIDErr.ID), http.StatusBadRequest)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)

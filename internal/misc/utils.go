@@ -49,6 +49,7 @@ func RandomString(n int) string {
 
 	b := make([]rune, n)
 	for i := range b {
+		//lint:ignore gosec just for education
 		b[i] = letter[rand.Intn(len(letter))]
 	}
 	return string(b)

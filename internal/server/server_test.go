@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	
+
 	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
@@ -18,7 +18,7 @@ func Example() {
 		log.Error(fmt.Sprintf("Unable to read configuration from environment variables: %s", err))
 		return
 	}
-	
+
 	mem := storage.NewMemoryRepository(
 		misc.Shorten,
 		misc.UUID,
@@ -33,7 +33,6 @@ func Example() {
 	resp, err := client.R().
 		EnableTrace().
 		Get(url + "/ping")
-
 	if err != nil {
 		log.Errorf("failed to run ping request. %s", err)
 		return

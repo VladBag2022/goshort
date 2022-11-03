@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/url"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/jackc/pgconn"

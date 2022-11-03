@@ -16,13 +16,12 @@ import (
 )
 
 func main() {
-	var checks []*analysis.Analyzer
-
 	// some analyzers from golang.org/x/tools/go/analysis/passes.
-	checks = append(checks,
+	checks := []*analysis.Analyzer{
 		printf.Analyzer,
 		shadow.Analyzer,
-		structtag.Analyzer)
+		structtag.Analyzer,
+	}
 
 	// all SA analyzers from staticcheck.io.
 	for _, v := range staticcheck.Analyzers {
