@@ -382,13 +382,13 @@ func (p *PostgresRepository) ShortenBatch(
 		return nil, NewUnknownIDError(fmt.Sprintf("user: %s", userID))
 	}
 
-	var ids []string
-	for _, origin := range origins {
+	ids := make([]string, len(origins))
+	for i, origin := range origins {
 		id, uErr := p.newURLID(ctx, origin)
 		if uErr != nil {
 			return nil, uErr
 		}
-		ids = append(ids, id)
+		ids[i] = id
 	}
 
 	// шаг 1 — объявляем транзакцию
