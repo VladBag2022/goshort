@@ -22,15 +22,17 @@ var (
 	buildCommit  string
 )
 
+const NA string = "N/A"
+
 func main() {
 	if len(buildVersion) == 0 {
-		buildVersion = "N/A"
+		buildVersion = NA
 	}
 	if len(buildDate) == 0 {
-		buildDate = "N/A"
+		buildDate = NA
 	}
 	if len(buildCommit) == 0 {
-		buildCommit = "N/A"
+		buildCommit = NA
 	}
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
