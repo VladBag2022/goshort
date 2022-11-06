@@ -23,7 +23,7 @@ func NewServer(repository storage.Repository, postgres *storage.PostgresReposito
 }
 
 func (s Server) ListenAndServe() {
-	if err := http.ListenAndServe(s.config.Address, router(s)); err != nil {
+	if err := http.ListenAndServe(s.config.Address, router(s)); err != nil { //nolint:gosec
 		fmt.Println(err)
 		return
 	}

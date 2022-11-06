@@ -12,7 +12,7 @@ import (
 	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v4/stdlib" // using pgx
 )
 
 type PostgresRepository struct {
@@ -54,10 +54,7 @@ func (p *PostgresRepository) Close() []error {
 }
 
 func (p *PostgresRepository) Ping(ctx context.Context) error {
-	if err := p.database.PingContext(ctx); err != nil {
-		return err
-	}
-	return nil
+	return p.database.PingContext(ctx)
 }
 
 func (p *PostgresRepository) createSchema(ctx context.Context) error {
@@ -78,7 +75,6 @@ func (p *PostgresRepository) createSchema(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
@@ -234,11 +230,7 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 		}
 	}
 
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 func (p *PostgresRepository) Load(_ context.Context) error {

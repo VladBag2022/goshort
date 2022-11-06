@@ -3,10 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-
-	//lint:ignore G108 just for education
-	_ "net/http/pprof"
-
+	_ "net/http/pprof" //nolint:gosec
 	"os"
 	"os/signal"
 	"syscall"
@@ -72,7 +69,7 @@ func main() {
 	var postgresRepository *storage.PostgresRepository
 	var memoryRepository *storage.MemoryRepository
 
-	if len(config.DatabaseDSN) != 0 {
+	if len(config.DatabaseDSN) != 0 { //nolint:nestif
 		postgresRepository, err = storage.NewPostgresRepository(
 			context.Background(),
 			config.DatabaseDSN,
