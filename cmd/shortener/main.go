@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+
+	//lint:ignore G108 just for education
 	_ "net/http/pprof"
+
 	"os"
 	"os/signal"
 	"syscall"
