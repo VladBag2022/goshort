@@ -85,7 +85,7 @@ func TestServer_shorten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, content := testRequest(t, ts, http.MethodPost, "/", strings.NewReader(tt.content))
-			err := response.Body.Close()
+			err = response.Body.Close()
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)
@@ -141,7 +141,7 @@ func TestServer_api_shorten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, content := testRequest(t, ts, http.MethodPost, "/api/shorten", strings.NewReader(tt.content))
-			err := response.Body.Close()
+			err = response.Body.Close()
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)

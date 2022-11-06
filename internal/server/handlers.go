@@ -51,7 +51,7 @@ func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string,
 				return userID, nil
 			}
 		}
-	} else if errors.Is(err, http.ErrNoCookie) {
+	} else if !errors.Is(err, http.ErrNoCookie) {
 		return "", err
 	}
 
