@@ -62,7 +62,7 @@ func (m *MemoryRepository) Restore(_ context.Context, id string) (*url.URL, bool
 }
 
 func (m *MemoryRepository) Delete(_ context.Context, _ string, _ []string) error {
-	return fmt.Errorf("not realised")
+	return fmt.Errorf("not realized")
 }
 
 func (m *MemoryRepository) Load(_ context.Context) error {
