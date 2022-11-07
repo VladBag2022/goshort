@@ -10,7 +10,7 @@ import (
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
-func Example() {
+func ExampleServer() {
 	const url string = "http://localhost:8080"
 
 	cfg, err := NewConfig()
