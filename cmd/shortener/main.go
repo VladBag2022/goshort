@@ -65,41 +65,10 @@ func main() {
 		config.DatabaseDSN = *databasePtr
 	}
 
-	var app server.Server
-	var postgresRepository *storage.PostgresRepository
-	var memoryRepository *storage.MemoryRepository
-
-	if len(config.DatabaseDSN) != 0 {
-		postgresRepository, err = storage.NewPostgresRepository(
-			context.Background(),
-			config.DatabaseDSN,
-			misc.Shorten,
-			misc.UUID,
-		)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		app = server.NewServer(postgresRepository, postgresRepository, config)
-	} else {
-		if len(config.FileStoragePath) != 0 {
-			coolStorage, _ := storage.NewCoolStorage(config.FileStoragePath)
-			memoryRepository = storage.NewMemoryRepositoryWithCoolStorage(
-				misc.Shorten,
-				misc.UUID,
-				coolStorage,
-			)
-			if err = memoryRepository.Load(context.Background()); err != nil {
-				fmt.Println(err)
-			}
-		} else {
-			memoryRepository = storage.NewMemoryRepository(
-				misc.Shorten,
-				misc.UUID,
-			)
-		}
-		app = server.NewServer(memoryRepository, postgresRepository, config)
+	app, postgresRepository, memoryRepository, err := newApp(config)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
 	go func() {
@@ -123,4 +92,35 @@ func main() {
 	if postgresRepository != nil {
 		postgresRepository.Close()
 	}
+}
+
+func newApp(cfg *server.Config) (server.Server, *storage.PostgresRepository, *storage.MemoryRepository, error) {
+	if len(cfg.DatabaseDSN) == 0 {
+		if len(cfg.FileStoragePath) == 0 {
+			mem := storage.NewMemoryRepository(
+				misc.Shorten,
+				misc.UUID,
+			)
+			return server.NewServer(mem, nil, cfg), nil, mem, nil
+		}
+
+		coolStorage, _ := storage.NewCoolStorage(cfg.FileStoragePath)
+		mem := storage.NewMemoryRepositoryWithCoolStorage(
+			misc.Shorten,
+			misc.UUID,
+			coolStorage,
+		)
+		if err := mem.Load(context.Background()); err != nil {
+			fmt.Println(err)
+		}
+		return server.NewServer(mem, nil, cfg), nil, mem, nil
+	}
+
+	pg, err := storage.NewPostgresRepository(
+		context.Background(),
+		cfg.DatabaseDSN,
+		misc.Shorten,
+		misc.UUID,
+	)
+	return server.NewServer(pg, pg, cfg), pg, nil, err
 }
