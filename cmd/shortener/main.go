@@ -50,6 +50,9 @@ func main() {
 	baseURLPtr := flag.StringP("base", "b", "", "base url for URL misc")
 	fileStoragePathPtr := flag.StringP("file", "f", "", "file storage path")
 	databasePtr := flag.StringP("database", "d", "", "database DSN")
+	enableHTTPSPtr := flag.BoolP("https", "s", false, "enable HTTPS")
+	certPEMPtr := flag.StringP("cert", "c", "", "cert PEM file for HTTPS")
+	keyPEMPtr := flag.StringP("key", "p", "", "key PEM file for HTTPS")
 	flag.Parse()
 
 	if len(*serverAddressPtr) != 0 {
@@ -63,6 +66,15 @@ func main() {
 	}
 	if len(*databasePtr) != 0 {
 		config.DatabaseDSN = *databasePtr
+	}
+	if *enableHTTPSPtr {
+		config.EnableHTTPS = *enableHTTPSPtr
+	}
+	if len(*certPEMPtr) > 0 {
+		config.CertPEMFile = *certPEMPtr
+	}
+	if len(*keyPEMPtr) > 0 {
+		config.KeyPEMFile = *keyPEMPtr
 	}
 
 	app, postgresRepository, memoryRepository, err := newApp(config)

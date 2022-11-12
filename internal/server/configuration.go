@@ -14,6 +14,9 @@ type Config struct {
 	AuthCookieName  string `env:"AUTH_COOKIE" envDefault:"X-AUTH"`
 	AuthCookieKey   string `env:"AUTH_KEY" envDefault:"gopher"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
+	EnableHTTPS     bool   `env:"ENABLE_HTTPS"`
+	CertPEMFile	    string `env:"CERT_PEM" envDefault:"cert.pem"`
+	KeyPEMFile      string `env:"KEY_PEM" envDefault:"key.pem"`
 }
 
 // NewConfig parses environment variables and returns config.
