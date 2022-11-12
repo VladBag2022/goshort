@@ -3,12 +3,14 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/storage"
@@ -49,8 +51,7 @@ func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string,
 				return userID, nil
 			}
 		}
-
-	} else if err != http.ErrNoCookie {
+	} else if !errors.Is(err, http.ErrNoCookie) {
 		return "", err
 	}
 
@@ -115,7 +116,7 @@ func shortenHandler(s Server) http.HandlerFunc {
 
 		_, err = w.Write([]byte(fmt.Sprintf("%s/%s", s.config.BaseURL, urlID)))
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}
 }
@@ -182,7 +183,7 @@ func shortenAPIHandler(s Server) http.HandlerFunc {
 
 		_, err = w.Write(responseBytes)
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}
 }
@@ -210,7 +211,7 @@ func deleteAPIHandler(s Server) http.HandlerFunc {
 		go func() {
 			err = s.repository.Delete(context.Background(), userID, request)
 			if err != nil {
-				// log in prod
+				log.Error(err)
 			}
 		}()
 		w.WriteHeader(http.StatusAccepted)
@@ -258,7 +259,7 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 			w.Header().Set("Content-Type", "application/json")
 			_, err = w.Write(responseBytes)
 			if err != nil {
-				// log in prod
+				log.Error(err)
 			}
 		}
 	}
@@ -274,8 +275,9 @@ func restoreHandler(s Server) http.HandlerFunc {
 
 		origin, deleted, err := s.repository.Restore(r.Context(), id)
 		if err != nil {
-			if _, ok := err.(*storage.UnknownIDError); ok {
-				http.Error(w, "Unknown id", http.StatusBadRequest)
+			var unknownIDErr *storage.UnknownIDError
+			if errors.As(err, &unknownIDErr) {
+				http.Error(w, fmt.Sprintf("Unknown id: %s", unknownIDErr.ID), http.StatusBadRequest)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -370,7 +372,7 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write(responseBytes)
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}
 }

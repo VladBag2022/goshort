@@ -3,7 +3,7 @@ package storage
 import "fmt"
 
 type UnknownIDError struct {
-	id string
+	ID string
 }
 
 func NewUnknownIDError(id string) error {
@@ -11,7 +11,7 @@ func NewUnknownIDError(id string) error {
 }
 
 func (e *UnknownIDError) Error() string {
-	return e.id
+	return e.ID
 }
 
 type noCoolStorageError struct {

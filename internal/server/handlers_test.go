@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -30,7 +29,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	err = resp.Body.Close()
@@ -86,7 +85,7 @@ func TestServer_shorten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, content := testRequest(t, ts, http.MethodPost, "/", strings.NewReader(tt.content))
-			err := response.Body.Close()
+			err = response.Body.Close()
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)
@@ -142,7 +141,7 @@ func TestServer_api_shorten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, content := testRequest(t, ts, http.MethodPost, "/api/shorten", strings.NewReader(tt.content))
-			err := response.Body.Close()
+			err = response.Body.Close()
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)

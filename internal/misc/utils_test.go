@@ -3,6 +3,8 @@ package misc
 import (
 	"net/url"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func BenchmarkSign(b *testing.B) {
@@ -13,7 +15,9 @@ func BenchmarkSign(b *testing.B) {
 
 func BenchmarkVerify(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		Verify("123", "345|48cecbcac0ebb1d8bc0c395d5cc742c8f0eaf5e59696a8e0462ffa75990781df")
+		if _, _, err := Verify("123", "345|48cecbcac0ebb1d8bc0c395d5cc742c8f0eaf5e59696a8e0462ffa75990781df"); err != nil {
+			log.Error(err)
+		}
 	}
 }
 
@@ -96,7 +100,7 @@ func TestVerify(t *testing.T) {
 }
 
 func TestShorten(t *testing.T) {
-	testUrl, err := url.Parse("https://google.com")
+	testURL, err := url.Parse("https://google.com")
 	if err != nil {
 		t.Error(err)
 		return
@@ -114,7 +118,7 @@ func TestShorten(t *testing.T) {
 		{
 			name: "positive test",
 			args: args{
-				in0: testUrl,
+				in0: testURL,
 			},
 			want:    10,
 			wantErr: false,

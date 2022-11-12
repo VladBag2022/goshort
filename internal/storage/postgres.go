@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgerrcode"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/VladBag2022/goshort/internal/misc"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
+	_ "github.com/jackc/pgx/v4/stdlib" // using pgx
 )
 
 type PostgresRepository struct {
@@ -53,10 +54,7 @@ func (p *PostgresRepository) Close() []error {
 }
 
 func (p *PostgresRepository) Ping(ctx context.Context) error {
-	if err := p.database.PingContext(ctx); err != nil {
-		return err
-	}
-	return nil
+	return p.database.PingContext(ctx)
 }
 
 func (p *PostgresRepository) createSchema(ctx context.Context) error {
@@ -77,7 +75,6 @@ func (p *PostgresRepository) createSchema(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
@@ -188,7 +185,7 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 				for urlID := range input {
 					exists, err := p.bindingExists(ctx, urlID.(string), userID)
 					if err != nil {
-						// log
+						log.Error(err)
 						continue
 					}
 					if exists {
@@ -212,7 +209,7 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 	defer func(tx *sql.Tx) {
 		err = tx.Rollback()
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}(tx)
 
@@ -233,11 +230,7 @@ func (p *PostgresRepository) Delete(ctx context.Context, userID string, ids []st
 		}
 	}
 
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 func (p *PostgresRepository) Load(_ context.Context) error {
@@ -381,13 +374,13 @@ func (p *PostgresRepository) ShortenBatch(
 		return nil, NewUnknownIDError(fmt.Sprintf("user: %s", userID))
 	}
 
-	var ids []string
-	for _, origin := range origins {
-		id, err := p.newURLID(ctx, origin)
-		if err != nil {
-			return nil, err
+	ids := make([]string, len(origins))
+	for i, origin := range origins {
+		id, uErr := p.newURLID(ctx, origin)
+		if uErr != nil {
+			return nil, uErr
 		}
-		ids = append(ids, id)
+		ids[i] = id
 	}
 
 	// шаг 1 — объявляем транзакцию
@@ -399,7 +392,7 @@ func (p *PostgresRepository) ShortenBatch(
 	defer func(tx *sql.Tx) {
 		err = tx.Rollback()
 		if err != nil {
-			// log in prod
+			log.Error(err)
 		}
 	}(tx)
 
@@ -417,14 +410,14 @@ func (p *PostgresRepository) ShortenBatch(
 
 	for i := 0; i < len(origins); i++ {
 		if _, err = insertURLStmt.ExecContext(ctx, ids[i], origins[i].String()); err != nil {
-			if err := tx.Rollback(); err != nil {
-				return nil, err
+			if rErr := tx.Rollback(); rErr != nil {
+				return nil, rErr
 			}
 			return nil, err
 		}
 		if _, err = bindStmt.ExecContext(ctx, userID, ids[i]); err != nil {
-			if err := tx.Rollback(); err != nil {
-				return nil, err
+			if rErr := tx.Rollback(); rErr != nil {
+				return nil, rErr
 			}
 			return nil, err
 		}

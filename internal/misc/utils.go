@@ -1,3 +1,4 @@
+// Package misc contains everything not suited for separate package.
 package misc
 
 import (
@@ -48,7 +49,7 @@ func RandomString(n int) string {
 
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letter[rand.Intn(len(letter))]
+		b[i] = letter[rand.Intn(len(letter))] //nolint:gosec // use weak random generator just for education
 	}
 	return string(b)
 }

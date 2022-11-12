@@ -62,7 +62,7 @@ func (m *MemoryRepository) Restore(_ context.Context, id string) (*url.URL, bool
 }
 
 func (m *MemoryRepository) Delete(_ context.Context, _ string, _ []string) error {
-	return fmt.Errorf("not realised")
+	return fmt.Errorf("not realized")
 }
 
 func (m *MemoryRepository) Load(_ context.Context) error {
@@ -177,8 +177,8 @@ func (m *MemoryRepository) ShortenBatch(
 	origins []*url.URL,
 	userID string,
 ) ([]string, error) {
-	var ids []string
-	for _, origin := range origins {
+	ids := make([]string, len(origins))
+	for i, origin := range origins {
 		id, _, err := m.Shorten(ctx, origin)
 		if err != nil {
 			return ids, err
@@ -187,7 +187,7 @@ func (m *MemoryRepository) ShortenBatch(
 		if err != nil {
 			return ids, err
 		}
-		ids = append(ids, id)
+		ids[i] = id
 	}
 	return ids, nil
 }
