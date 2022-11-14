@@ -25,10 +25,10 @@ func NewServer(repository storage.Repository, postgres *storage.PostgresReposito
 func (s Server) ListenAndServe() {
 	var err error
 	if s.config.EnableHTTPS {
-		err = http.ListenAndServeTLS(s.config.Address,
+		err = http.ListenAndServeTLS(s.config.Address, //nolint:gosec // do not support timeouts for simplicity
 			s.config.CertPEMFile,
 			s.config.KeyPEMFile,
-			router(s)) //nolint:gosec // do not support timeouts for simplicity
+			router(s))
 	} else {
 		err = http.ListenAndServe(s.config.Address, router(s)) //nolint:gosec // do not support timeouts for simplicity
 	}
