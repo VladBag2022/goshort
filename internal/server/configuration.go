@@ -3,27 +3,34 @@ package server
 import (
 	"fmt"
 
-	"github.com/caarlos0/env/v6"
+	"github.com/spf13/viper"
 )
 
 // Config stores application configuration.
 type Config struct {
-	Address         string `env:"SERVER_ADDRESS" envDefault:"localhost:8080"`
-	BaseURL         string `env:"BASE_URL"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	AuthCookieName  string `env:"AUTH_COOKIE" envDefault:"X-AUTH"`
-	AuthCookieKey   string `env:"AUTH_KEY" envDefault:"gopher"`
-	DatabaseDSN     string `env:"DATABASE_DSN"`
-	EnableHTTPS     bool   `env:"ENABLE_HTTPS"`
-	CertPEMFile	    string `env:"CERT_PEM" envDefault:"cert.pem"`
-	KeyPEMFile      string `env:"KEY_PEM" envDefault:"key.pem"`
+	Address         string
+	BaseURL         string
+	FileStoragePath string
+	AuthCookieName  string
+	AuthCookieKey   string
+	DatabaseDSN     string
+	EnableHTTPS     bool
+	CertPEMFile     string
+	KeyPEMFile      string
 }
 
 // NewConfig parses environment variables and returns config.
-func NewConfig() (*Config, error) {
-	config := &Config{}
-	if err := env.Parse(config); err != nil {
-		return nil, err
+func NewConfig() *Config {
+	config := &Config{
+		Address:         viper.GetString("Address"),
+		BaseURL:         viper.GetString("BaseURL"),
+		FileStoragePath: viper.GetString("FileStoragePath"),
+		AuthCookieName:  viper.GetString("AuthCookieName"),
+		AuthCookieKey:   viper.GetString("AuthCookieKey"),
+		DatabaseDSN:     viper.GetString("DatabaseDSN"),
+		EnableHTTPS:     viper.GetBool("EnableHTTPS"),
+		CertPEMFile:     viper.GetString("CertPEMFile"),
+		KeyPEMFile:      viper.GetString("KeyPEMFile"),
 	}
 	if len(config.BaseURL) == 0 {
 		config.BaseURL = fmt.Sprintf("http://%s", config.Address)
@@ -31,5 +38,5 @@ func NewConfig() (*Config, error) {
 	if config.BaseURL[len(config.BaseURL)-1:] == "/" {
 		config.BaseURL = config.BaseURL[:len(config.BaseURL)-1]
 	}
-	return config, nil
+	return config
 }

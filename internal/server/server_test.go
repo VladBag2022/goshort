@@ -12,11 +12,7 @@ import (
 )
 
 func ExampleServer() {
-	cfg, err := NewConfig()
-	if err != nil {
-		log.Error(fmt.Sprintf("Unable to read configuration from environment variables: %s", err))
-		return
-	}
+	cfg := NewConfig()
 	cfg.Address = "localhost:51515"
 
 	mem := storage.NewMemoryRepository(
