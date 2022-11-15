@@ -122,6 +122,10 @@ func rootRun(_ *cobra.Command, _ []string) {
 		syscall.SIGQUIT)
 	<-sigChan
 
+	if err = app.Shutdown(); err != nil {
+		log.Errorf("failed to shutdown HTTP server gracefully. %s", err)
+	}
+
 	if memoryRepository != nil {
 		if err = memoryRepository.Dump(context.Background()); err != nil {
 			fmt.Println(err)
