@@ -72,10 +72,7 @@ func TestServer_shorten(t *testing.T) {
 	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
 	defer mem.Close()
 
-	c, err := NewConfig()
-	if err != nil {
-		require.NoError(t, err)
-	}
+	c := NewConfig()
 	s := NewServer(mem, nil, c)
 
 	r := router(s)
@@ -85,7 +82,7 @@ func TestServer_shorten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, content := testRequest(t, ts, http.MethodPost, "/", strings.NewReader(tt.content))
-			err = response.Body.Close()
+			err := response.Body.Close()
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)
@@ -128,10 +125,7 @@ func TestServer_api_shorten(t *testing.T) {
 
 	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
 	defer mem.Close()
-	c, err := NewConfig()
-	if err != nil {
-		require.NoError(t, err)
-	}
+	c := NewConfig()
 	s := NewServer(mem, nil, c)
 
 	r := router(s)
@@ -141,7 +135,7 @@ func TestServer_api_shorten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response, content := testRequest(t, ts, http.MethodPost, "/api/shorten", strings.NewReader(tt.content))
-			err = response.Body.Close()
+			err := response.Body.Close()
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, response.StatusCode)
@@ -191,10 +185,7 @@ func TestServer_restore(t *testing.T) {
 			id, _, err := mem.Shorten(context.Background(), u)
 			require.NoError(t, err)
 
-			c, err := NewConfig()
-			if err != nil {
-				require.NoError(t, err)
-			}
+			c := NewConfig()
 			s := NewServer(mem, nil, c)
 			r := router(s)
 			ts := httptest.NewServer(r)

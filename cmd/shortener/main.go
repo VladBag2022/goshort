@@ -9,7 +9,8 @@ import (
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
-	flag "github.com/spf13/pflag"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/server"
@@ -20,9 +21,68 @@ var (
 	buildVersion string
 	buildDate    string
 	buildCommit  string
+
+	configFile string
+	rootCmd    = &cobra.Command{
+		Use: "shortener",
+		Run: rootRun,
+	}
 )
 
 const NA string = "N/A"
+
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	// add flags.
+	rootCmd.PersistentFlags().StringP("address", "a", "", "server address: host:port")
+	rootCmd.PersistentFlags().StringP("base", "b", "", "base url for URL misc")
+	rootCmd.PersistentFlags().StringP("file", "f", "", "file storage path")
+	rootCmd.PersistentFlags().StringP("database", "d", "", "database DSN")
+	rootCmd.PersistentFlags().BoolP("https", "s", false, "enable HTTPS")
+	rootCmd.PersistentFlags().StringP("cert", "e", "", "cert PEM file for HTTPS")
+	rootCmd.PersistentFlags().StringP("key", "p", "", "key PEM file for HTTPS")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "config file")
+
+	// bind flags.
+	for key, f := range map[string]string{
+		"Address":         "address",
+		"BaseURL":         "base",
+		"FileStoragePath": "file",
+		"DatabaseDSN":     "database",
+		"EnableHTTPS":     "https",
+		"CertPEMFile":     "cert",
+		"KeyPEMFile":      "key",
+	} {
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(f)); err != nil {
+			log.Errorf("failed to bind flag %s. %s", f, err)
+		}
+	}
+
+	// bind ENV variables.
+	for key, env := range map[string]string{
+		"Address":         "SERVER_ADDRESS",
+		"BaseURL":         "BASE_URL",
+		"FileStoragePath": "FILE_STORAGE_PATH",
+		"AuthCookieName":  "AUTH_COOKIE",
+		"AuthCookieKey":   "AUTH_KEY",
+		"DatabaseDSN":     "DATABASE_DSN",
+		"EnableHTTPS":     "ENABLE_HTTPS",
+		"CertPEMFile":     "CERT_PEM",
+		"KeyPEMFile":      "KEY_PEM",
+	} {
+		if err := viper.BindEnv(key, env); err != nil {
+			log.Errorf("failed to bind ENV variable %s. %s", env, err)
+		}
+	}
+
+	// set default values.
+	viper.SetDefault("Address", "localhost:8080")
+	viper.SetDefault("AuthCookieName", "X-AUTH")
+	viper.SetDefault("AuthCookieKey", "gopher")
+	viper.SetDefault("CertPEMFile", "cert.pem")
+	viper.SetDefault("KeyPEMFile", "key.pem")
+}
 
 func main() {
 	if len(buildVersion) == 0 {
@@ -38,33 +98,13 @@ func main() {
 	fmt.Printf("Build date: %s\n", buildDate)
 	fmt.Printf("Build commit: %s\n", buildCommit)
 
-	log.Trace("Read configuration from environment variables...")
-	config, err := server.NewConfig()
-	if err != nil {
-		log.Error(fmt.Sprintf("Unable to read configuration from environment variables: %s", err))
-		return
+	if err := rootCmd.Execute(); err != nil {
+		log.Errorf("failed to execute root command. %s", err)
 	}
+}
 
-	log.Trace("Read configuration from command line arguments...")
-	serverAddressPtr := flag.StringP("address", "a", "", "server address: host:port")
-	baseURLPtr := flag.StringP("base", "b", "", "base url for URL misc")
-	fileStoragePathPtr := flag.StringP("file", "f", "", "file storage path")
-	databasePtr := flag.StringP("database", "d", "", "database DSN")
-	flag.Parse()
-
-	if len(*serverAddressPtr) != 0 {
-		config.Address = *serverAddressPtr
-	}
-	if len(*baseURLPtr) != 0 {
-		config.BaseURL = *baseURLPtr
-	}
-	if len(*fileStoragePathPtr) != 0 {
-		config.FileStoragePath = *fileStoragePathPtr
-	}
-	if len(*databasePtr) != 0 {
-		config.DatabaseDSN = *databasePtr
-	}
-
+func rootRun(_ *cobra.Command, _ []string) {
+	config := server.NewConfig()
 	app, postgresRepository, memoryRepository, err := newApp(config)
 	if err != nil {
 		fmt.Println(err)
@@ -82,6 +122,10 @@ func main() {
 		syscall.SIGQUIT)
 	<-sigChan
 
+	if err = app.Shutdown(); err != nil {
+		log.Errorf("failed to shutdown HTTP server gracefully. %s", err)
+	}
+
 	if memoryRepository != nil {
 		if err = memoryRepository.Dump(context.Background()); err != nil {
 			fmt.Println(err)
@@ -91,6 +135,24 @@ func main() {
 
 	if postgresRepository != nil {
 		postgresRepository.Close()
+	}
+}
+
+func initConfig() {
+	if configFile == "" {
+		configFile = os.Getenv("CONFIG")
+	}
+
+	// read config from file.
+	if configFile != "" {
+		viper.SetConfigName(configFile)
+		viper.SetConfigType("json")
+		viper.AddConfigPath(".")
+
+		err := viper.ReadInConfig()
+		if err != nil {
+			log.Errorf("failed to read config file: %s", err)
+		}
 	}
 }
 
