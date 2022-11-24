@@ -16,9 +16,13 @@ import (
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
-func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
+func testRequest(t *testing.T, ts *httptest.Server, method, path, ip string, body io.Reader) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, body)
 	require.NoError(t, err)
+
+	if len(ip) > 0 {
+		req.Header.Set( http.CanonicalHeaderKey("X-Real-IP"), ip)
+	}
 
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -36,6 +40,146 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io
 	require.NoError(t, err)
 
 	return resp, string(respBody)
+}
+
+func TestServer_stats(t *testing.T) {
+	type want struct {
+		contentType string
+		statusCode  int
+		response    string
+	}
+	tests := []struct {
+		name     string
+		trustedSubnet   string
+		userIP     string
+		userUrls map[string][]string
+		want     want
+	}{
+		{
+			name:    "positive test, 2 users, 6 different urls, 6 total urls",
+			trustedSubnet: "10.0.0.0/8",
+			userIP: "10.10.10.10",
+			userUrls: map[string][]string{
+				"john": {"http://url1", "http://url2", "http://url3"},
+				"mark": {"http://url4", "http://url5", "http://url6"},
+			},
+			want: want{
+				contentType: "application/json",
+				statusCode:  http.StatusOK,
+				response:    "{\"urls\":6,\"users\":2}",
+			},
+		},
+		{
+			name:    "positive test, 2 users, 4 different urls, 6 total urls",
+			trustedSubnet: "10.0.0.0/8",
+			userIP: "10.10.10.10",
+			userUrls: map[string][]string{
+				"john": {"http://url1", "http://url2", "http://url3"},
+				"mark": {"http://url3", "http://url2", "http://url6"},
+			},
+			want: want{
+				contentType: "application/json",
+				statusCode:  http.StatusOK,
+				response:    "{\"urls\":6,\"users\":2}",
+			},
+		},
+		{
+			name:    "positive test, 2 users, 3 different urls, 6 total urls",
+			trustedSubnet: "10.0.0.0/8",
+			userIP: "10.10.10.10",
+			userUrls: map[string][]string{
+				"john": {"http://url1", "http://url2", "http://url3"},
+				"mark": {"http://url1", "http://url2", "http://url3"},
+			},
+			want: want{
+				contentType: "application/json",
+				statusCode:  http.StatusOK,
+				response:    "{\"urls\":6,\"users\":2}",
+			},
+		},
+		{
+			name:    "positive test, no users, no urls",
+			trustedSubnet: "10.0.0.0/8",
+			userIP: "10.10.10.10",
+			userUrls: map[string][]string{},
+			want: want{
+				contentType: "application/json",
+				statusCode:  http.StatusOK,
+				response:    "{\"urls\":0,\"users\":0}",
+			},
+		},
+		{
+			name:    "positive test, 2 users, no urls",
+			trustedSubnet: "10.0.0.0/8",
+			userIP: "10.10.10.10",
+			userUrls: map[string][]string{
+				"john": {},
+				"mark": {},
+			},
+			want: want{
+				contentType: "application/json",
+				statusCode:  http.StatusOK,
+				response:    "{\"urls\":0,\"users\":2}",
+			},
+		},
+		{
+			name:    "negative test, wrong address",
+			trustedSubnet: "10.0.0.0/24",
+			userIP: "10.10.10.10",
+			userUrls: map[string][]string{},
+			want: want{
+				contentType: "",
+				statusCode:  http.StatusForbidden,
+				response:    "",
+			},
+		},
+		{
+			name:    "negative test, no trusted subnet",
+			trustedSubnet: "",
+			userIP: "10.10.10.10",
+			userUrls: map[string][]string{},
+			want: want{
+				contentType: "",
+				statusCode:  http.StatusForbidden,
+				response:    "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
+			defer mem.Close()
+
+			for _, urls := range tt.userUrls {
+				_, err := mem.Register(context.Background())
+				require.NoError(t, err)
+
+				for _, tUrl := range urls {
+					u, uErr := url.Parse(tUrl)
+					require.NoError(t, uErr)
+					_, _, uErr = mem.Shorten(context.Background(), u)
+					require.NoError(t, uErr)
+				}
+			}
+
+			c := NewConfig()
+			c.TrustedSubnet = tt.trustedSubnet
+			s := NewServer(mem, nil, c)
+
+			r := router(s)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+
+			response, content := testRequest(t, ts, http.MethodGet, "/api/internal/stats", tt.userIP, nil)
+			err := response.Body.Close()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.statusCode, response.StatusCode)
+			assert.Equal(t, tt.want.contentType, response.Header.Get("Content-Type"))
+			assert.Equal(t, tt.want.response, content)
+		})
+	}
 }
 
 func TestServer_shorten(t *testing.T) {
@@ -81,7 +225,7 @@ func TestServer_shorten(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response, content := testRequest(t, ts, http.MethodPost, "/", strings.NewReader(tt.content))
+			response, content := testRequest(t, ts, http.MethodPost, "/","", strings.NewReader(tt.content))
 			err := response.Body.Close()
 			require.NoError(t, err)
 
@@ -134,7 +278,7 @@ func TestServer_api_shorten(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response, content := testRequest(t, ts, http.MethodPost, "/api/shorten", strings.NewReader(tt.content))
+			response, content := testRequest(t, ts, http.MethodPost, "/api/shorten","", strings.NewReader(tt.content))
 			err := response.Body.Close()
 			require.NoError(t, err)
 
@@ -199,7 +343,7 @@ func TestServer_restore(t *testing.T) {
 			t.Logf("ID: %s", id)
 			t.Logf("Request: %s", requestURL)
 
-			response, content := testRequest(t, ts, http.MethodGet, requestURL, nil)
+			response, content := testRequest(t, ts, http.MethodGet, requestURL, "",nil)
 			err = response.Body.Close()
 			require.NoError(t, err)
 
