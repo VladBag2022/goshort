@@ -44,5 +44,8 @@ type Repository interface {
 		userID string,
 	) (ids []string, err error)
 
+	UrlsCount(ctx context.Context) (count int64, err error)
+	UsersCount(ctx context.Context) (count int64, err error)
+
 	Close() []error
 }

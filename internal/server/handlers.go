@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 
@@ -37,6 +38,57 @@ type ShortenBatchListEntryAPIRequest struct {
 type ShortenBatchListEntryAPIResponse struct {
 	ID     string `json:"correlation_id"`
 	Result string `json:"short_url"`
+}
+
+type StatsResponse struct {
+	Urls  int64 `json:"urls"`
+	Users int64 `json:"users"`
+}
+
+func statsHandler(s Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if len(s.config.TrustedSubnet) == 0 {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		_, n, err := net.ParseCIDR(s.config.TrustedSubnet)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if !n.Contains(net.ParseIP(r.RemoteAddr)) {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		var stats StatsResponse
+
+		stats.Urls, err = s.repository.UrlsCount(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		stats.Users, err = s.repository.UsersCount(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		responseBytes, marshalErr := json.Marshal(&stats)
+		if marshalErr != nil {
+			http.Error(w, marshalErr.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, err = w.Write(responseBytes)
+		if err != nil {
+			log.Error(err)
+		}
+	}
 }
 
 func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {

@@ -191,3 +191,19 @@ func (m *MemoryRepository) ShortenBatch(
 	}
 	return ids, nil
 }
+
+func (m *MemoryRepository) UrlsCount(_ context.Context) (count int64, err error) {
+	m.urls.Range(func(_, _ any) bool {
+		count++
+		return true
+	})
+	return
+}
+
+func (m *MemoryRepository) UsersCount(_ context.Context) (count int64, err error) {
+	m.userUrls.Range(func(_, _ any) bool {
+		count++
+		return true
+	})
+	return
+}
