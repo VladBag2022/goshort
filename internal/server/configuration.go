@@ -17,6 +17,7 @@ type Config struct {
 	EnableHTTPS     bool
 	CertPEMFile     string
 	KeyPEMFile      string
+	TrustedSubnet      string
 }
 
 // NewConfig parses environment variables and returns config.
@@ -30,7 +31,7 @@ func NewConfig() *Config {
 		DatabaseDSN:     viper.GetString("DatabaseDSN"),
 		EnableHTTPS:     viper.GetBool("EnableHTTPS"),
 		CertPEMFile:     viper.GetString("CertPEMFile"),
-		KeyPEMFile:      viper.GetString("KeyPEMFile"),
+		TrustedSubnet:      viper.GetString("TrustedSubnet"),
 	}
 	if len(config.BaseURL) == 0 {
 		config.BaseURL = fmt.Sprintf("http://%s", config.Address)

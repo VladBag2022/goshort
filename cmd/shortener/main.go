@@ -35,6 +35,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// add flags.
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "config file")
 	rootCmd.PersistentFlags().StringP("address", "a", "", "server address: host:port")
 	rootCmd.PersistentFlags().StringP("base", "b", "", "base url for URL misc")
 	rootCmd.PersistentFlags().StringP("file", "f", "", "file storage path")
@@ -42,7 +43,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("https", "s", false, "enable HTTPS")
 	rootCmd.PersistentFlags().StringP("cert", "e", "", "cert PEM file for HTTPS")
 	rootCmd.PersistentFlags().StringP("key", "p", "", "key PEM file for HTTPS")
-	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "config file")
+	rootCmd.PersistentFlags().StringP("trusted", "t", "", "trusted subnet in CIDR format")
 
 	// bind flags.
 	for key, f := range map[string]string{
@@ -53,6 +54,7 @@ func init() {
 		"EnableHTTPS":     "https",
 		"CertPEMFile":     "cert",
 		"KeyPEMFile":      "key",
+		"TrustedSubnet":   "trusted",
 	} {
 		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(f)); err != nil {
 			log.Errorf("failed to bind flag %s. %s", f, err)
@@ -70,6 +72,7 @@ func init() {
 		"EnableHTTPS":     "ENABLE_HTTPS",
 		"CertPEMFile":     "CERT_PEM",
 		"KeyPEMFile":      "KEY_PEM",
+		"TrustedSubnet":   "TRUSTED_SUBNET",
 	} {
 		if err := viper.BindEnv(key, env); err != nil {
 			log.Errorf("failed to bind ENV variable %s. %s", env, err)
