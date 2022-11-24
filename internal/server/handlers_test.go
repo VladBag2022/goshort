@@ -21,7 +21,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path, ip string, bod
 	require.NoError(t, err)
 
 	if len(ip) > 0 {
-		req.Header.Set( http.CanonicalHeaderKey("X-Real-IP"), ip)
+		req.Header.Set("X-Real-IP", ip)
 	}
 
 	client := &http.Client{
@@ -49,16 +49,16 @@ func TestServer_stats(t *testing.T) {
 		response    string
 	}
 	tests := []struct {
-		name     string
-		trustedSubnet   string
-		userIP     string
-		userUrls map[string][]string
-		want     want
+		name          string
+		trustedSubnet string
+		userIP        string
+		userUrls      map[string][]string
+		want          want
 	}{
 		{
-			name:    "positive test, 2 users, 6 different urls, 6 total urls",
+			name:          "positive test, 2 users, 6 different urls, 6 total urls",
 			trustedSubnet: "10.0.0.0/8",
-			userIP: "10.10.10.10",
+			userIP:        "10.10.10.10",
 			userUrls: map[string][]string{
 				"john": {"http://url1", "http://url2", "http://url3"},
 				"mark": {"http://url4", "http://url5", "http://url6"},
@@ -70,9 +70,9 @@ func TestServer_stats(t *testing.T) {
 			},
 		},
 		{
-			name:    "positive test, 2 users, 4 different urls, 6 total urls",
+			name:          "positive test, 2 users, 4 different urls, 6 total urls",
 			trustedSubnet: "10.0.0.0/8",
-			userIP: "10.10.10.10",
+			userIP:        "10.10.10.10",
 			userUrls: map[string][]string{
 				"john": {"http://url1", "http://url2", "http://url3"},
 				"mark": {"http://url3", "http://url2", "http://url6"},
@@ -84,9 +84,9 @@ func TestServer_stats(t *testing.T) {
 			},
 		},
 		{
-			name:    "positive test, 2 users, 3 different urls, 6 total urls",
+			name:          "positive test, 2 users, 3 different urls, 6 total urls",
 			trustedSubnet: "10.0.0.0/8",
-			userIP: "10.10.10.10",
+			userIP:        "10.10.10.10",
 			userUrls: map[string][]string{
 				"john": {"http://url1", "http://url2", "http://url3"},
 				"mark": {"http://url1", "http://url2", "http://url3"},
@@ -98,10 +98,10 @@ func TestServer_stats(t *testing.T) {
 			},
 		},
 		{
-			name:    "positive test, no users, no urls",
+			name:          "positive test, no users, no urls",
 			trustedSubnet: "10.0.0.0/8",
-			userIP: "10.10.10.10",
-			userUrls: map[string][]string{},
+			userIP:        "10.10.10.10",
+			userUrls:      map[string][]string{},
 			want: want{
 				contentType: "application/json",
 				statusCode:  http.StatusOK,
@@ -109,9 +109,9 @@ func TestServer_stats(t *testing.T) {
 			},
 		},
 		{
-			name:    "positive test, 2 users, no urls",
+			name:          "positive test, 2 users, no urls",
 			trustedSubnet: "10.0.0.0/8",
-			userIP: "10.10.10.10",
+			userIP:        "10.10.10.10",
 			userUrls: map[string][]string{
 				"john": {},
 				"mark": {},
@@ -123,10 +123,10 @@ func TestServer_stats(t *testing.T) {
 			},
 		},
 		{
-			name:    "negative test, wrong address",
+			name:          "negative test, wrong address",
 			trustedSubnet: "10.0.0.0/24",
-			userIP: "10.10.10.10",
-			userUrls: map[string][]string{},
+			userIP:        "10.10.10.10",
+			userUrls:      map[string][]string{},
 			want: want{
 				contentType: "",
 				statusCode:  http.StatusForbidden,
@@ -134,10 +134,10 @@ func TestServer_stats(t *testing.T) {
 			},
 		},
 		{
-			name:    "negative test, no trusted subnet",
+			name:          "negative test, no trusted subnet",
 			trustedSubnet: "",
-			userIP: "10.10.10.10",
-			userUrls: map[string][]string{},
+			userIP:        "10.10.10.10",
+			userUrls:      map[string][]string{},
 			want: want{
 				contentType: "",
 				statusCode:  http.StatusForbidden,
@@ -155,8 +155,8 @@ func TestServer_stats(t *testing.T) {
 				_, err := mem.Register(context.Background())
 				require.NoError(t, err)
 
-				for _, tUrl := range urls {
-					u, uErr := url.Parse(tUrl)
+				for _, tURL := range urls {
+					u, uErr := url.Parse(tURL)
 					require.NoError(t, uErr)
 					_, _, uErr = mem.Shorten(context.Background(), u)
 					require.NoError(t, uErr)
@@ -225,7 +225,7 @@ func TestServer_shorten(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response, content := testRequest(t, ts, http.MethodPost, "/","", strings.NewReader(tt.content))
+			response, content := testRequest(t, ts, http.MethodPost, "/", "", strings.NewReader(tt.content))
 			err := response.Body.Close()
 			require.NoError(t, err)
 
@@ -278,7 +278,7 @@ func TestServer_api_shorten(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response, content := testRequest(t, ts, http.MethodPost, "/api/shorten","", strings.NewReader(tt.content))
+			response, content := testRequest(t, ts, http.MethodPost, "/api/shorten", "", strings.NewReader(tt.content))
 			err := response.Body.Close()
 			require.NoError(t, err)
 
@@ -343,7 +343,7 @@ func TestServer_restore(t *testing.T) {
 			t.Logf("ID: %s", id)
 			t.Logf("Request: %s", requestURL)
 
-			response, content := testRequest(t, ts, http.MethodGet, requestURL, "",nil)
+			response, content := testRequest(t, ts, http.MethodGet, requestURL, "", nil)
 			err = response.Body.Close()
 			require.NoError(t, err)
 
