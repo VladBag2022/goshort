@@ -292,14 +292,16 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 		var pbRequest pb.BatchShortenRequest
 		pbRequest.Entries = make([]*pb.BatchShortenRequestEntry, len(requestList))
 		for i, e := range requestList {
-			pbRequest.GetEntries()[i].Id = e.ID
-			pbRequest.GetEntries()[i].Origin = e.Origin
+			pbRequest.GetEntries()[i] = &pb.BatchShortenRequestEntry{
+				Id:     e.ID,
+				Origin: e.Origin,
+			}
 		}
 
 		pbResponse, err := s.abstractServer.ShortenBatch(r.Context(), userID, &pbRequest)
 		if err != nil {
 			pbStatus, ok := status.FromError(err)
-			if ok && pbStatus.Code() == codes.NotFound {
+			if ok && pbStatus.Code() == codes.InvalidArgument {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -307,7 +309,7 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		responseList := make([]*BatchShortenResponseEntry, len(pbResponse.GetEntries()))
+		responseList := make([]BatchShortenResponseEntry, len(pbResponse.GetEntries()))
 		for i, e := range pbResponse.GetEntries() {
 			responseList[i].ID = e.GetId()
 			responseList[i].Result = e.GetResult()

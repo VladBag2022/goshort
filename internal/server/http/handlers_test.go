@@ -420,63 +420,44 @@ func TestServer_delete(t *testing.T) {
 	}
 }
 
-// func TestServer_shortened_list(t *testing.T) {
-//	type want struct {
-//		statusCode   int
-//		entriesCount int
-//	}
-//	tests := []struct {
-//		name    string
-//		origins []string
-//		want    want
-//	}{
-//		{
-//			name:    "positive test - no entries",
-//			origins: []string{},
-//			want: want{
-//				statusCode:   http.StatusNoContent,
-//				entriesCount: 0,
-//			},
-//		},
-//		{
-//			name:    "positive test - 2 entries",
-//			origins: []string{"123", "345"},
-//			want: want{
-//				statusCode:   http.StatusOK,
-//				entriesCount: 2,
-//			},
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
-//			defer mem.Close()
-//
-//			c := server.NewConfig()
-//			a := server.NewServer(mem, nil, c)
-//			s := NewServer(&a)
-//			r := router(s)
-//
-//			ts := httptest.NewServer(r)
-//			defer ts.Close()
-//
-//			for _, origin := range tt.origins {
-//			}
-//
-//			response, content := testRequest(t, ts, http.MethodGet, "/api/user/urls", "", nil)
-//			err := response.Body.Close()
-//			require.NoError(t, err)
-//
-//			require.Equal(t, tt.want.statusCode, response.StatusCode)
-//
-//			if response.StatusCode == http.StatusOK {
-//				var entries []Entry
-//				err = json.Unmarshal([]byte(content), &entries)
-//				require.NoError(t, err)
-//
-//				assert.Equal(t, tt.want.entriesCount, len(entries))
-//			}
-//		})
-//	}
-//}
+func TestServer_api_shorten_batch(t *testing.T) {
+	type want struct {
+		contentType string
+		statusCode  int
+	}
+	tests := []struct {
+		name    string
+		content string
+		want    want
+	}{
+		{
+			name:    "positive test",
+			content: "[{\"correlation_id\":\"123\",\"original_url\":\"345\"}]",
+			want: want{
+				contentType: "application/json",
+				statusCode:  201,
+			},
+		},
+	}
+
+	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
+	defer mem.Close()
+	c := server.NewConfig()
+	a := server.NewServer(mem, nil, c)
+	s := NewServer(&a)
+
+	r := router(s)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, _ := testRequest(t, ts, http.MethodPost, "/api/shorten/batch", "", strings.NewReader(tt.content))
+			err := response.Body.Close()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.statusCode, response.StatusCode)
+			assert.Equal(t, tt.want.contentType, response.Header.Get("Content-Type"))
+		})
+	}
+}
