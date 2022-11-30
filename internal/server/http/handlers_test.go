@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/VladBag2022/goshort/internal/misc"
+	"github.com/VladBag2022/goshort/internal/server"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
@@ -163,9 +164,10 @@ func TestServer_stats(t *testing.T) {
 				}
 			}
 
-			c := NewConfig()
+			c := server.NewConfig()
 			c.TrustedSubnet = tt.trustedSubnet
-			s := NewServer(mem, nil, c)
+			a := server.NewServer(mem, nil, c)
+			s := NewServer(&a)
 
 			r := router(s)
 			ts := httptest.NewServer(r)
@@ -216,8 +218,9 @@ func TestServer_shorten(t *testing.T) {
 	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
 	defer mem.Close()
 
-	c := NewConfig()
-	s := NewServer(mem, nil, c)
+	c := server.NewConfig()
+	a := server.NewServer(mem, nil, c)
+	s := NewServer(&a)
 
 	r := router(s)
 	ts := httptest.NewServer(r)
@@ -269,8 +272,9 @@ func TestServer_api_shorten(t *testing.T) {
 
 	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
 	defer mem.Close()
-	c := NewConfig()
-	s := NewServer(mem, nil, c)
+	c := server.NewConfig()
+	a := server.NewServer(mem, nil, c)
+	s := NewServer(&a)
 
 	r := router(s)
 	ts := httptest.NewServer(r)
@@ -329,8 +333,9 @@ func TestServer_restore(t *testing.T) {
 			id, _, err := mem.Shorten(context.Background(), u)
 			require.NoError(t, err)
 
-			c := NewConfig()
-			s := NewServer(mem, nil, c)
+			c := server.NewConfig()
+			a := server.NewServer(mem, nil, c)
+			s := NewServer(&a)
 			r := router(s)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
@@ -353,6 +358,98 @@ func TestServer_restore(t *testing.T) {
 			}
 
 			t.Logf("Body: %s", content)
+		})
+	}
+}
+
+func TestServer_delete(t *testing.T) {
+	type want struct {
+		statusCode int
+	}
+	tests := []struct {
+		name   string
+		data   string
+		want   want
+	}{
+		{
+			name:   "positive test",
+			data: "[\"123\",\"456\"]",
+			want: want{
+				statusCode: http.StatusAccepted,
+			},
+		},
+		{
+			name:   "negative test - wrong input format",
+			data: "\"123\",\"456\"",
+			want: want{
+				statusCode: http.StatusBadRequest,
+			},
+		},
+	}
+	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
+	defer mem.Close()
+
+	c := server.NewConfig()
+	a := server.NewServer(mem, nil, c)
+	s := NewServer(&a)
+	r := router(s)
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, _ := testRequest(t, ts, http.MethodDelete, "/api/user/urls", "", strings.NewReader(tt.data))
+			err := response.Body.Close()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.statusCode, response.StatusCode)
+		})
+	}
+}
+
+func TestServer_shortened_list(t *testing.T) {
+	type want struct {
+		statusCode int
+	}
+	tests := []struct {
+		name   string
+		data   string
+		want   want
+	}{
+		{
+			name:   "positive test",
+			data: "[\"123\",\"456\"]",
+			want: want{
+				statusCode: http.StatusAccepted,
+			},
+		},
+		{
+			name:   "negative test - wrong input format",
+			data: "\"123\",\"456\"",
+			want: want{
+				statusCode: http.StatusBadRequest,
+			},
+		},
+	}
+	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
+	defer mem.Close()
+
+	c := server.NewConfig()
+	a := server.NewServer(mem, nil, c)
+	s := NewServer(&a)
+	r := router(s)
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, _ := testRequest(t, ts, http.MethodDelete, "/api/user/urls", "", strings.NewReader(tt.data))
+			err := response.Body.Close()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.statusCode, response.StatusCode)
 		})
 	}
 }

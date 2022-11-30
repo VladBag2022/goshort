@@ -14,6 +14,7 @@ import (
 
 	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/server"
+	"github.com/VladBag2022/goshort/internal/server/http"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
@@ -159,14 +160,15 @@ func initConfig() {
 	}
 }
 
-func newApp(cfg *server.Config) (server.Server, *storage.PostgresRepository, *storage.MemoryRepository, error) {
+func newApp(cfg *server.Config) (http.Server, *storage.PostgresRepository, *storage.MemoryRepository, error) {
 	if len(cfg.DatabaseDSN) == 0 {
 		if len(cfg.FileStoragePath) == 0 {
 			mem := storage.NewMemoryRepository(
 				misc.Shorten,
 				misc.UUID,
 			)
-			return server.NewServer(mem, nil, cfg), nil, mem, nil
+			a := server.NewServer(mem, nil, cfg)
+			return http.NewServer(&a), nil, mem, nil
 		}
 
 		coolStorage, _ := storage.NewCoolStorage(cfg.FileStoragePath)
@@ -178,7 +180,8 @@ func newApp(cfg *server.Config) (server.Server, *storage.PostgresRepository, *st
 		if err := mem.Load(context.Background()); err != nil {
 			fmt.Println(err)
 		}
-		return server.NewServer(mem, nil, cfg), nil, mem, nil
+		a := server.NewServer(mem, nil, cfg)
+		return http.NewServer(&a), nil, mem, nil
 	}
 
 	pg, err := storage.NewPostgresRepository(
@@ -187,5 +190,6 @@ func newApp(cfg *server.Config) (server.Server, *storage.PostgresRepository, *st
 		misc.Shorten,
 		misc.UUID,
 	)
-	return server.NewServer(pg, pg, cfg), pg, nil, err
+	a := server.NewServer(pg, pg, cfg)
+	return http.NewServer(&a), pg, nil, err
 }
