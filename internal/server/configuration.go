@@ -12,6 +12,7 @@ const (
 	DefaultAuthCookieKey  = "gopher"
 	DefaultCertPEMFile    = "cert.pem"
 	DefaultKeyPEMFile     = "key.pem"
+	DefaultGRPCAddress    = "localhost:3200"
 )
 
 // Config stores application configuration.
@@ -26,6 +27,7 @@ type Config struct {
 	CertPEMFile     string
 	KeyPEMFile      string
 	TrustedSubnet   string
+	GRPCAddress     string
 }
 
 // NewConfig parses environment variables and returns config.
@@ -40,6 +42,7 @@ func NewConfig() *Config {
 		EnableHTTPS:     viper.GetBool("EnableHTTPS"),
 		CertPEMFile:     viper.GetString("CertPEMFile"),
 		TrustedSubnet:   viper.GetString("TrustedSubnet"),
+		GRPCAddress:     viper.GetString("GRPCAddress"),
 	}
 	if len(config.BaseURL) == 0 {
 		config.BaseURL = fmt.Sprintf("http://%s", config.Address)

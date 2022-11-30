@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/url"
 
+	"github.com/VladBag2022/goshort/internal/misc"
+
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,17 +19,45 @@ import (
 )
 
 type Server struct {
-	Repository storage.Repository
+	Config *Config
+
+	repository storage.Repository
 	postgres   *storage.PostgresRepository
-	Config     *Config
 }
 
 func NewServer(repository storage.Repository, postgres *storage.PostgresRepository, config *Config) Server {
 	return Server{
-		Repository: repository,
+		Config: config,
+
+		repository: repository,
 		postgres:   postgres,
-		Config:     config,
 	}
+}
+
+func (s Server) Validate(ctx context.Context, token string) (userID string, err error) {
+	valid, userID, err := misc.Verify(s.Config.AuthCookieKey, token)
+	if err != nil {
+		return "", err
+	}
+
+	if !valid {
+		return "", status.Error(codes.Unauthenticated, "Unauthenticated")
+	}
+
+	_, err = s.repository.ShortenedList(ctx, userID)
+	return userID, err
+}
+
+func (s Server) Register(ctx context.Context) (userID string, err error) {
+	return s.repository.Register(ctx)
+}
+
+func (s Server) ValidateOrRegister(ctx context.Context, token string) (userID string, err error) {
+	userID, err = s.Validate(ctx, token)
+	if err == nil {
+		return userID, err
+	}
+	return s.repository.Register(ctx)
 }
 
 func (s Server) Shorten(
@@ -42,14 +72,14 @@ func (s Server) Shorten(
 		return response, status.Errorf(codes.InvalidArgument, "%s", err)
 	}
 
-	urlID, inserted, err := s.Repository.Shorten(ctx, origin)
+	urlID, inserted, err := s.repository.Shorten(ctx, origin)
 	if err != nil {
 		return response, status.Errorf(codes.Internal, "%s", err)
 	}
 	response.Result = fmt.Sprintf("%s/%s", s.Config.BaseURL, urlID)
 	response.Existed = !inserted
 
-	err = s.Repository.Bind(ctx, urlID, userID)
+	err = s.repository.Bind(ctx, urlID, userID)
 	if err != nil {
 		err = status.Errorf(codes.Internal, "%s", err)
 	}
@@ -58,7 +88,7 @@ func (s Server) Shorten(
 
 func (s Server) Delete(userID string, request *pb.DeleteRequest) {
 	go func() {
-		err := s.Repository.Delete(context.Background(), userID, request.GetUrlIDs())
+		err := s.repository.Delete(context.Background(), userID, request.GetUrlIDs())
 		if err != nil {
 			log.Error(err)
 		}
@@ -68,13 +98,13 @@ func (s Server) Delete(userID string, request *pb.DeleteRequest) {
 func (s Server) List(ctx context.Context, userID string) (response *pb.Entries, err error) {
 	response = &pb.Entries{}
 
-	urlIDs, err := s.Repository.ShortenedList(ctx, userID)
+	urlIDs, err := s.repository.ShortenedList(ctx, userID)
 	if err != nil {
 		return response, status.Errorf(codes.Internal, "%s", err)
 	}
 
 	for _, urlID := range urlIDs {
-		origin, _, restoreErr := s.Repository.Restore(ctx, urlID)
+		origin, _, restoreErr := s.repository.Restore(ctx, urlID)
 		if restoreErr != nil {
 			return response, status.Errorf(codes.Internal, "%s", err)
 		}
@@ -91,7 +121,7 @@ func (s Server) List(ctx context.Context, userID string) (response *pb.Entries, 
 func (s Server) Restore(ctx context.Context, request *pb.RestoreRequest) (response *pb.RestoreResponse, err error) {
 	response = &pb.RestoreResponse{}
 
-	origin, deleted, err := s.Repository.Restore(ctx, request.GetId())
+	origin, deleted, err := s.repository.Restore(ctx, request.GetId())
 	if err != nil {
 		var unknownIDErr *storage.UnknownIDError
 		if errors.As(err, &unknownIDErr) {
@@ -133,7 +163,7 @@ func (s Server) ShortenBatch(
 		}
 	}
 
-	ids, err := s.Repository.ShortenBatch(ctx, origins, userID)
+	ids, err := s.repository.ShortenBatch(ctx, origins, userID)
 	if err != nil {
 		return response, status.Errorf(codes.Internal, "%s", err)
 	}
@@ -164,12 +194,12 @@ func (s Server) Stats(ctx context.Context, remoteAddr string) (stats *pb.Stats, 
 		return stats, status.Error(codes.Unauthenticated, "Unauthenticated")
 	}
 
-	stats.Urls, err = s.Repository.UrlsCount(ctx)
+	stats.Urls, err = s.repository.UrlsCount(ctx)
 	if err != nil {
 		return stats, status.Errorf(codes.Internal, "%s", err)
 	}
 
-	stats.Users, err = s.Repository.UsersCount(ctx)
+	stats.Users, err = s.repository.UsersCount(ctx)
 	if err != nil {
 		err = status.Errorf(codes.Internal, "%s", err)
 	}

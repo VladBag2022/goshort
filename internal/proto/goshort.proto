@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
 package goshort;
 
 option go_package = "goshort/internal/proto";
@@ -56,4 +57,19 @@ message BatchShortenResponse {
 message Stats {
   int64 urls = 1;
   int64 users = 2;
+}
+
+message RegisterResponse {
+  string token = 1;
+}
+
+service Shortener {
+  rpc Shorten(ShortenRequest) returns (ShortenResponse);
+  rpc Delete(DeleteRequest) returns (google.protobuf.Empty);
+  rpc List(google.protobuf.Empty) returns (Entries);
+  rpc Restore(RestoreRequest) returns (RestoreResponse);
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc ShortenBatch(BatchShortenRequest) returns (BatchShortenResponse);
+  rpc GetStats(google.protobuf.Empty) returns (Stats);
+  rpc Register(google.protobuf.Empty) returns (RegisterResponse);
 }

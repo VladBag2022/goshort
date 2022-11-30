@@ -55,7 +55,7 @@ func testRequest(
 	return resp, string(respBody)
 }
 
-func TestServer_stats(t *testing.T) {
+func TestServer_stat(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int

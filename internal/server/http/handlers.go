@@ -39,23 +39,15 @@ type BatchShortenResponseEntry struct {
 func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
 	cookie, err := r.Cookie(s.abstractServer.Config.AuthCookieName)
 
-	if err == nil {
-		validCookie, userID, _ := misc.Verify(s.abstractServer.Config.AuthCookieKey, cookie.Value)
-
-		if validCookie {
-			_, err = s.abstractServer.Repository.ShortenedList(r.Context(), userID)
-			if err == nil {
-				return userID, nil
-			}
-		}
-	} else if !errors.Is(err, http.ErrNoCookie) {
+	if err != nil && !errors.Is(err, http.ErrNoCookie) {
 		return "", err
 	}
 
-	userID, err := s.abstractServer.Repository.Register(r.Context())
+	userID, err := s.abstractServer.ValidateOrRegister(r.Context(), cookie.Value)
 	if err != nil {
 		return "", err
 	}
+
 	cookie = &http.Cookie{
 		Name:  s.abstractServer.Config.AuthCookieName,
 		Value: misc.Sign(s.abstractServer.Config.AuthCookieKey, userID),
