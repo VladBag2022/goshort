@@ -39,11 +39,14 @@ type BatchShortenResponseEntry struct {
 func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
 	cookie, err := r.Cookie(s.abstractServer.Config.AuthCookieName)
 
-	if err != nil && !errors.Is(err, http.ErrNoCookie) {
+	var token string
+	if err == nil {
+		token = cookie.Value
+	} else if !errors.Is(err, http.ErrNoCookie) {
 		return "", err
 	}
 
-	userID, err := s.abstractServer.ValidateOrRegister(r.Context(), cookie.Value)
+	userID, err := s.abstractServer.ValidateOrRegister(r.Context(), token)
 	if err != nil {
 		return "", err
 	}
