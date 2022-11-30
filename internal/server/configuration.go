@@ -6,6 +6,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	DefaultAddress        = "localhost:8080"
+	DefaultAuthCookieName = "X-AUTH"
+	DefaultAuthCookieKey  = "gopher"
+	DefaultCertPEMFile    = "cert.pem"
+	DefaultKeyPEMFile     = "key.pem"
+)
+
 // Config stores application configuration.
 type Config struct {
 	Address         string

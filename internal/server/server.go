@@ -30,7 +30,11 @@ func NewServer(repository storage.Repository, postgres *storage.PostgresReposito
 	}
 }
 
-func (s Server) Shorten(ctx context.Context, userID string, request *pb.ShortenRequest) (response *pb.ShortenResponse, err error) {
+func (s Server) Shorten(
+	ctx context.Context,
+	userID string,
+	request *pb.ShortenRequest,
+) (response *pb.ShortenResponse, err error) {
 	response = &pb.ShortenResponse{}
 
 	origin, err := url.Parse(request.GetOrigin())
@@ -75,7 +79,7 @@ func (s Server) List(ctx context.Context, userID string) (response *pb.Entries, 
 			return response, status.Errorf(codes.Internal, "%s", err)
 		}
 
-		response.Entries = append(response.Entries , &pb.Entry{
+		response.Entries = append(response.Entries, &pb.Entry{
 			Result: fmt.Sprintf("%s/%s", s.Config.BaseURL, urlID),
 			Origin: origin.String(),
 		})

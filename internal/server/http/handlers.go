@@ -23,6 +23,11 @@ type StatsResponse struct {
 	Users int64 `json:"users"`
 }
 
+type Entry struct {
+	Result string `json:"short_url"`
+	Origin string `json:"original_url"`
+}
+
 func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
 	cookie, err := r.Cookie(s.abstractServer.Config.AuthCookieName)
 
@@ -194,7 +199,13 @@ func shortenedListAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		responseBytes, marshalErr := protojson.Marshal(response)
+		entries := make([]Entry, len(response.GetEntries()))
+		for i, pbEntry := range response.GetEntries() {
+			entries[i].Result = pbEntry.GetResult()
+			entries[i].Origin = pbEntry.GetOrigin()
+		}
+
+		responseBytes, marshalErr := json.Marshal(entries)
 		if marshalErr != nil {
 			http.Error(w, marshalErr.Error(), http.StatusInternalServerError)
 			return
@@ -330,7 +341,7 @@ func statsHandler(s Server) http.HandlerFunc {
 		}
 
 		stats := StatsResponse{
-			Urls: pbStats.GetUrls(),
+			Urls:  pbStats.GetUrls(),
 			Users: pbStats.GetUsers(),
 		}
 

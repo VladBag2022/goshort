@@ -81,11 +81,11 @@ func init() {
 	}
 
 	// set default values.
-	viper.SetDefault("Address", "localhost:8080")
-	viper.SetDefault("AuthCookieName", "X-AUTH")
-	viper.SetDefault("AuthCookieKey", "gopher")
-	viper.SetDefault("CertPEMFile", "cert.pem")
-	viper.SetDefault("KeyPEMFile", "key.pem")
+	viper.SetDefault("Address", server.DefaultAddress)
+	viper.SetDefault("AuthCookieName", server.DefaultAuthCookieName)
+	viper.SetDefault("AuthCookieKey", server.DefaultAuthCookieKey)
+	viper.SetDefault("CertPEMFile", server.DefaultCertPEMFile)
+	viper.SetDefault("KeyPEMFile", server.DefaultKeyPEMFile)
 }
 
 func main() {

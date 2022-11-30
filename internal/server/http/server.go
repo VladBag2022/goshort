@@ -10,8 +10,8 @@ import (
 )
 
 type Server struct {
-	abstractServer     *server.Server
-	http       *http.Server
+	abstractServer *server.Server
+	http           *http.Server
 }
 
 func NewServer(abstractServer *server.Server) Server {

@@ -17,7 +17,14 @@ import (
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
-func testRequest(t *testing.T, ts *httptest.Server, method, path, ip string, body io.Reader) (*http.Response, string) {
+const testUserID = "test-user"
+
+func testRequest(
+	t *testing.T,
+	ts *httptest.Server,
+	method, path, ip string,
+	body io.Reader,
+) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, body)
 	require.NoError(t, err)
 
@@ -25,13 +32,18 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path, ip string, bod
 		req.Header.Set("X-Real-IP", ip)
 	}
 
-	client := &http.Client{
+	req.AddCookie(&http.Cookie{
+		Name:  server.DefaultAuthCookieName,
+		Value: misc.Sign(server.DefaultAuthCookieKey, testUserID),
+	})
+
+	c := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 
-	resp, err := client.Do(req)
+	resp, err := c.Do(req)
 	require.NoError(t, err)
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -367,19 +379,19 @@ func TestServer_delete(t *testing.T) {
 		statusCode int
 	}
 	tests := []struct {
-		name   string
-		data   string
-		want   want
+		name string
+		data string
+		want want
 	}{
 		{
-			name:   "positive test",
+			name: "positive test",
 			data: "[\"123\",\"456\"]",
 			want: want{
 				statusCode: http.StatusAccepted,
 			},
 		},
 		{
-			name:   "negative test - wrong input format",
+			name: "negative test - wrong input format",
 			data: "\"123\",\"456\"",
 			want: want{
 				statusCode: http.StatusBadRequest,
@@ -408,48 +420,63 @@ func TestServer_delete(t *testing.T) {
 	}
 }
 
-func TestServer_shortened_list(t *testing.T) {
-	type want struct {
-		statusCode int
-	}
-	tests := []struct {
-		name   string
-		data   string
-		want   want
-	}{
-		{
-			name:   "positive test",
-			data: "[\"123\",\"456\"]",
-			want: want{
-				statusCode: http.StatusAccepted,
-			},
-		},
-		{
-			name:   "negative test - wrong input format",
-			data: "\"123\",\"456\"",
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-	}
-	mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
-	defer mem.Close()
-
-	c := server.NewConfig()
-	a := server.NewServer(mem, nil, c)
-	s := NewServer(&a)
-	r := router(s)
-
-	ts := httptest.NewServer(r)
-	defer ts.Close()
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			response, _ := testRequest(t, ts, http.MethodDelete, "/api/user/urls", "", strings.NewReader(tt.data))
-			err := response.Body.Close()
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.want.statusCode, response.StatusCode)
-		})
-	}
-}
+// func TestServer_shortened_list(t *testing.T) {
+//	type want struct {
+//		statusCode   int
+//		entriesCount int
+//	}
+//	tests := []struct {
+//		name    string
+//		origins []string
+//		want    want
+//	}{
+//		{
+//			name:    "positive test - no entries",
+//			origins: []string{},
+//			want: want{
+//				statusCode:   http.StatusNoContent,
+//				entriesCount: 0,
+//			},
+//		},
+//		{
+//			name:    "positive test - 2 entries",
+//			origins: []string{"123", "345"},
+//			want: want{
+//				statusCode:   http.StatusOK,
+//				entriesCount: 2,
+//			},
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			mem := storage.NewMemoryRepository(misc.Shorten, misc.UUID)
+//			defer mem.Close()
+//
+//			c := server.NewConfig()
+//			a := server.NewServer(mem, nil, c)
+//			s := NewServer(&a)
+//			r := router(s)
+//
+//			ts := httptest.NewServer(r)
+//			defer ts.Close()
+//
+//			for _, origin := range tt.origins {
+//			}
+//
+//			response, content := testRequest(t, ts, http.MethodGet, "/api/user/urls", "", nil)
+//			err := response.Body.Close()
+//			require.NoError(t, err)
+//
+//			require.Equal(t, tt.want.statusCode, response.StatusCode)
+//
+//			if response.StatusCode == http.StatusOK {
+//				var entries []Entry
+//				err = json.Unmarshal([]byte(content), &entries)
+//				require.NoError(t, err)
+//
+//				assert.Equal(t, tt.want.entriesCount, len(entries))
+//			}
+//		})
+//	}
+//}
