@@ -115,6 +115,39 @@ func (s Server) Ping(ctx context.Context) error {
 	return nil
 }
 
+func (s Server) ShortenBatch(
+	ctx context.Context,
+	userID string,
+	request *pb.BatchShortenRequest,
+) (response *pb.BatchShortenResponse, err error) {
+	response = &pb.BatchShortenResponse{}
+
+	origins := make([]*url.URL, len(request.GetEntries()))
+	for i, r := range request.GetEntries() {
+		if len(r.Origin) == 0 {
+			return response, status.Errorf(codes.InvalidArgument, "%s", err)
+		}
+		origins[i], err = url.Parse(r.Origin)
+		if err != nil {
+			return response, status.Errorf(codes.InvalidArgument, "%s", err)
+		}
+	}
+
+	ids, err := s.Repository.ShortenBatch(ctx, origins, userID)
+	if err != nil {
+		return response, status.Errorf(codes.Internal, "%s", err)
+	}
+
+	response.Entries = make([]*pb.BatchShortenResponseEntry, len(ids))
+	for i, id := range ids {
+		response.Entries[i] = &pb.BatchShortenResponseEntry{
+			Id:     request.GetEntries()[i].GetId(),
+			Result: fmt.Sprintf("%s/%s", s.Config.BaseURL, id),
+		}
+	}
+	return response, nil
+}
+
 func (s Server) Stats(ctx context.Context, remoteAddr string) (stats *pb.Stats, err error) {
 	stats = &pb.Stats{}
 

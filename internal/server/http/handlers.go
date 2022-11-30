@@ -3,10 +3,8 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
@@ -26,6 +24,16 @@ type StatsResponse struct {
 type Entry struct {
 	Result string `json:"short_url"`
 	Origin string `json:"original_url"`
+}
+
+type BatchShortenRequestEntry struct {
+	ID     string `json:"correlation_id"`
+	Origin string `json:"original_url"`
+}
+
+type BatchShortenResponseEntry struct {
+	ID     string `json:"correlation_id"`
+	Result string `json:"short_url"`
 }
 
 func authCookieHelper(s Server, w http.ResponseWriter, r *http.Request) (string, error) {
@@ -275,44 +283,37 @@ func shortenBatchAPIHandler(s Server) http.HandlerFunc {
 			return
 		}
 
-		var requestList pb.BatchShortenRequest
-		if err = protojson.Unmarshal(body, &requestList); err != nil {
+		var requestList []BatchShortenRequestEntry
+		if err = json.Unmarshal(body, &requestList); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		var origins []*url.URL
-		for _, request := range requestList.GetEntries() {
-			if len(request.Origin) == 0 {
-				http.Error(w, "URL was not provided", http.StatusBadRequest)
-				return
-			}
-
-			origin, parseErr := url.Parse(request.Origin)
-			if parseErr != nil {
-				http.Error(w, parseErr.Error(), http.StatusBadRequest)
-				return
-			}
-
-			origins = append(origins, origin)
+		var pbRequest pb.BatchShortenRequest
+		pbRequest.Entries = make([]*pb.BatchShortenRequestEntry, len(requestList))
+		for i, e := range requestList {
+			pbRequest.GetEntries()[i].Id = e.ID
+			pbRequest.GetEntries()[i].Origin = e.Origin
 		}
 
-		ids, err := s.abstractServer.Repository.ShortenBatch(r.Context(), origins, userID)
+		pbResponse, err := s.abstractServer.ShortenBatch(r.Context(), userID, &pbRequest)
 		if err != nil {
+			pbStatus, ok := status.FromError(err)
+			if ok && pbStatus.Code() == codes.NotFound {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		var responseList pb.BatchShortenResponse
-		for i := 0; i < len(requestList.GetEntries()); i++ {
-			response := &pb.BatchShortenResponseEntry{
-				Id:     requestList.GetEntries()[i].GetId(),
-				Result: fmt.Sprintf("%s/%s", s.abstractServer.Config.BaseURL, ids[i]),
-			}
-			responseList.Entries = append(responseList.Entries, response)
+		responseList := make([]*BatchShortenResponseEntry, len(pbResponse.GetEntries()))
+		for i, e := range pbResponse.GetEntries() {
+			responseList[i].ID = e.GetId()
+			responseList[i].Result = e.GetResult()
 		}
 
-		responseBytes, err := protojson.Marshal(&responseList)
+		responseBytes, err := json.Marshal(&responseList)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
