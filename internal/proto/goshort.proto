@@ -70,6 +70,5 @@ service Shortener {
   rpc Restore(RestoreRequest) returns (RestoreResponse);
   rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc ShortenBatch(BatchShortenRequest) returns (BatchShortenResponse);
-  rpc GetStats(google.protobuf.Empty) returns (Stats);
   rpc Register(google.protobuf.Empty) returns (RegisterResponse);
 }

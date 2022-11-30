@@ -8,15 +8,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"github.com/VladBag2022/goshort/internal/misc"
 	pb "github.com/VladBag2022/goshort/internal/proto"
 )
 
 func userIDFromIncomingContext(ctx context.Context) (string, error) {
 	return notNilValueFromIncomingContext(ctx, userIDMetadata)
-}
-
-func remoteAddrFromIncomingContext(ctx context.Context) (string, error) {
-	return notNilValueFromIncomingContext(ctx, remoteAddrMetadata)
 }
 
 func notNilValueFromIncomingContext(ctx context.Context, name string) (string, error) {
@@ -84,11 +81,13 @@ func (s *Server) ShortenBatch(ctx context.Context, r *pb.BatchShortenRequest) (*
 	return s.abstractServer.ShortenBatch(ctx, userID, r)
 }
 
-func (s *Server) GetStats(ctx context.Context, _ *empty.Empty) (*pb.Stats, error) {
-	remoteAddr, err := remoteAddrFromIncomingContext(ctx)
+func (s *Server) Register(ctx context.Context, _ *empty.Empty) (*pb.RegisterResponse, error) {
+	userID, err := s.abstractServer.Register(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.abstractServer.Stats(ctx, remoteAddr)
+	return &pb.RegisterResponse{
+		Token: misc.Sign(s.abstractServer.Config.AuthCookieKey, userID),
+	}, nil
 }

@@ -10,10 +10,7 @@ import (
 	"github.com/VladBag2022/goshort/internal/server"
 )
 
-const (
-	userIDMetadata     = "userID"
-	remoteAddrMetadata = "remoteAddr"
-)
+const userIDMetadata = "userID"
 
 type Server struct {
 	pb.UnimplementedShortenerServer

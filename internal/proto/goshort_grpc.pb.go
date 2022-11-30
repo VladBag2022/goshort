@@ -29,7 +29,6 @@ type ShortenerClient interface {
 	Restore(ctx context.Context, in *RestoreRequest, opts ...grpc.CallOption) (*RestoreResponse, error)
 	Ping(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
 	ShortenBatch(ctx context.Context, in *BatchShortenRequest, opts ...grpc.CallOption) (*BatchShortenResponse, error)
-	GetStats(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Stats, error)
 	Register(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*RegisterResponse, error)
 }
 
@@ -95,15 +94,6 @@ func (c *shortenerClient) ShortenBatch(ctx context.Context, in *BatchShortenRequ
 	return out, nil
 }
 
-func (c *shortenerClient) GetStats(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Stats, error) {
-	out := new(Stats)
-	err := c.cc.Invoke(ctx, "/goshort.Shortener/GetStats", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *shortenerClient) Register(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*RegisterResponse, error) {
 	out := new(RegisterResponse)
 	err := c.cc.Invoke(ctx, "/goshort.Shortener/Register", in, out, opts...)
@@ -123,7 +113,6 @@ type ShortenerServer interface {
 	Restore(context.Context, *RestoreRequest) (*RestoreResponse, error)
 	Ping(context.Context, *empty.Empty) (*empty.Empty, error)
 	ShortenBatch(context.Context, *BatchShortenRequest) (*BatchShortenResponse, error)
-	GetStats(context.Context, *empty.Empty) (*Stats, error)
 	Register(context.Context, *empty.Empty) (*RegisterResponse, error)
 	mustEmbedUnimplementedShortenerServer()
 }
@@ -149,9 +138,6 @@ func (UnimplementedShortenerServer) Ping(context.Context, *empty.Empty) (*empty.
 }
 func (UnimplementedShortenerServer) ShortenBatch(context.Context, *BatchShortenRequest) (*BatchShortenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShortenBatch not implemented")
-}
-func (UnimplementedShortenerServer) GetStats(context.Context, *empty.Empty) (*Stats, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetStats not implemented")
 }
 func (UnimplementedShortenerServer) Register(context.Context, *empty.Empty) (*RegisterResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
@@ -277,24 +263,6 @@ func _Shortener_ShortenBatch_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Shortener_GetStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ShortenerServer).GetStats(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/goshort.Shortener/GetStats",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ShortenerServer).GetStats(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Shortener_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(empty.Empty)
 	if err := dec(in); err != nil {
@@ -343,10 +311,6 @@ var Shortener_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShortenBatch",
 			Handler:    _Shortener_ShortenBatch_Handler,
-		},
-		{
-			MethodName: "GetStats",
-			Handler:    _Shortener_GetStats_Handler,
 		},
 		{
 			MethodName: "Register",
