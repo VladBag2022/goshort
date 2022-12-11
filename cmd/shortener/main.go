@@ -19,6 +19,13 @@ import (
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
+type App struct {
+	http     http.Server
+	rpc      grpc.Server
+	postgres *storage.PostgresRepository
+	mem      *storage.MemoryRepository
+}
+
 var (
 	buildVersion string
 	buildDate    string
@@ -114,18 +121,18 @@ func main() {
 
 func rootRun(_ *cobra.Command, _ []string) {
 	config := server.NewConfig()
-	HTTPServer, gRPCServer, postgresRepository, memoryRepository, err := newApp(config)
+	app, err := newApp(config)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	go func() {
-		HTTPServer.ListenAndServe()
+		app.http.ListenAndServe()
 	}()
 
 	go func() {
-		gRPCServer.ListenAndServe()
+		app.rpc.ListenAndServe()
 	}()
 
 	sigChan := make(chan os.Signal, 1)
@@ -135,20 +142,20 @@ func rootRun(_ *cobra.Command, _ []string) {
 		syscall.SIGQUIT)
 	<-sigChan
 
-	if err = HTTPServer.Shutdown(); err != nil {
+	if err = app.http.Shutdown(); err != nil {
 		log.Errorf("failed to shutdown HTTP server gracefully. %s", err)
 	}
-	gRPCServer.Shutdown()
+	app.rpc.Shutdown()
 
-	if memoryRepository != nil {
-		if err = memoryRepository.Dump(context.Background()); err != nil {
+	if app.mem != nil {
+		if err = app.mem.Dump(context.Background()); err != nil {
 			fmt.Println(err)
 		}
-		memoryRepository.Close()
+		app.mem.Close()
 	}
 
-	if postgresRepository != nil {
-		postgresRepository.Close()
+	if app.postgres != nil {
+		app.postgres.Close()
 	}
 }
 
@@ -170,20 +177,20 @@ func initConfig() {
 	}
 }
 
-func newApp(cfg *server.Config) (http.Server,
-	grpc.Server,
-	*storage.PostgresRepository,
-	*storage.MemoryRepository,
-	error,
-) {
+func newApp(cfg *server.Config) (App, error) {
 	if len(cfg.DatabaseDSN) == 0 {
 		if len(cfg.FileStoragePath) == 0 {
 			mem := storage.NewMemoryRepository(
 				misc.Shorten,
 				misc.UUID,
 			)
-			a := server.NewServer(mem, nil, cfg)
-			return http.NewServer(&a), grpc.NewServer(&a), nil, mem, nil
+			s := server.NewServer(mem, nil, cfg)
+
+			return App{
+				http: http.NewServer(&s),
+				rpc:  grpc.NewServer(&s),
+				mem:  mem,
+			}, nil
 		}
 
 		coolStorage, _ := storage.NewCoolStorage(cfg.FileStoragePath)
@@ -195,8 +202,13 @@ func newApp(cfg *server.Config) (http.Server,
 		if err := mem.Load(context.Background()); err != nil {
 			fmt.Println(err)
 		}
-		a := server.NewServer(mem, nil, cfg)
-		return http.NewServer(&a), grpc.NewServer(&a), nil, mem, nil
+		s := server.NewServer(mem, nil, cfg)
+
+		return App{
+			http: http.NewServer(&s),
+			rpc:  grpc.NewServer(&s),
+			mem:  mem,
+		}, nil
 	}
 
 	pg, err := storage.NewPostgresRepository(
@@ -205,6 +217,11 @@ func newApp(cfg *server.Config) (http.Server,
 		misc.Shorten,
 		misc.UUID,
 	)
-	a := server.NewServer(pg, pg, cfg)
-	return http.NewServer(&a), grpc.NewServer(&a), pg, nil, err
+	s := server.NewServer(pg, pg, cfg)
+
+	return App{
+		http:     http.NewServer(&s),
+		rpc:      grpc.NewServer(&s),
+		postgres: pg,
+	}, err
 }
