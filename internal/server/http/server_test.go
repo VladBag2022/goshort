@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"fmt"
@@ -8,11 +8,12 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/VladBag2022/goshort/internal/misc"
+	"github.com/VladBag2022/goshort/internal/server"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
 
 func ExampleServer() {
-	cfg := NewConfig()
+	cfg := server.NewConfig()
 	cfg.Address = "localhost:51515"
 
 	mem := storage.NewMemoryRepository(
@@ -20,7 +21,8 @@ func ExampleServer() {
 		misc.UUID,
 	)
 
-	app := NewServer(mem, nil, cfg)
+	abstract := server.NewServer(mem, nil, cfg)
+	app := NewServer(&abstract)
 	go func() {
 		app.ListenAndServe()
 	}()

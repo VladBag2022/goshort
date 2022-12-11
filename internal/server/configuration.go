@@ -6,6 +6,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	DefaultAddress        = "localhost:8080"
+	DefaultAuthCookieName = "X-AUTH"
+	DefaultAuthCookieKey  = "gopher"
+	DefaultCertPEMFile    = "cert.pem"
+	DefaultKeyPEMFile     = "key.pem"
+	DefaultGRPCAddress    = "localhost:3200"
+)
+
 // Config stores application configuration.
 type Config struct {
 	Address         string
@@ -17,6 +26,8 @@ type Config struct {
 	EnableHTTPS     bool
 	CertPEMFile     string
 	KeyPEMFile      string
+	TrustedSubnet   string
+	GRPCAddress     string
 }
 
 // NewConfig parses environment variables and returns config.
@@ -30,7 +41,8 @@ func NewConfig() *Config {
 		DatabaseDSN:     viper.GetString("DatabaseDSN"),
 		EnableHTTPS:     viper.GetBool("EnableHTTPS"),
 		CertPEMFile:     viper.GetString("CertPEMFile"),
-		KeyPEMFile:      viper.GetString("KeyPEMFile"),
+		TrustedSubnet:   viper.GetString("TrustedSubnet"),
+		GRPCAddress:     viper.GetString("GRPCAddress"),
 	}
 	if len(config.BaseURL) == 0 {
 		config.BaseURL = fmt.Sprintf("http://%s", config.Address)

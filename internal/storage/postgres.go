@@ -429,3 +429,13 @@ func (p *PostgresRepository) ShortenBatch(
 
 	return ids, nil
 }
+
+func (p *PostgresRepository) UrlsCount(ctx context.Context) (count int64, err error) {
+	row := p.database.QueryRowContext(ctx, "SELECT COUNT(*) FROM shortened_urls")
+	return count, row.Scan(&count)
+}
+
+func (p *PostgresRepository) UsersCount(ctx context.Context) (count int64, err error) {
+	row := p.database.QueryRowContext(ctx, "SELECT COUNT(*) FROM users")
+	return count, row.Scan(&count)
+}

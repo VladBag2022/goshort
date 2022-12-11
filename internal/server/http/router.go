@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"github.com/NYTimes/gziphandler"
@@ -24,6 +24,7 @@ func router(s Server) chi.Router {
 	r.Post("/api/shorten/batch", shortenBatchAPIHandler(s))
 	r.Get("/api/user/urls", shortenedListAPIHandler(s))
 	r.Delete("/api/user/urls", deleteAPIHandler(s))
+	r.Get("/api/internal/stats", statsHandler(s))
 	r.Get("/ping", pingHandler(s))
 	r.MethodNotAllowed(badRequestHandler)
 	r.NotFound(badRequestHandler)

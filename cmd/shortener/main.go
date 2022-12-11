@@ -14,8 +14,17 @@ import (
 
 	"github.com/VladBag2022/goshort/internal/misc"
 	"github.com/VladBag2022/goshort/internal/server"
+	"github.com/VladBag2022/goshort/internal/server/grpc"
+	"github.com/VladBag2022/goshort/internal/server/http"
 	"github.com/VladBag2022/goshort/internal/storage"
 )
+
+type App struct {
+	http     http.Server
+	rpc      grpc.Server
+	postgres *storage.PostgresRepository
+	mem      *storage.MemoryRepository
+}
 
 var (
 	buildVersion string
@@ -35,14 +44,16 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// add flags.
-	rootCmd.PersistentFlags().StringP("address", "a", "", "server address: host:port")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "config file")
+	rootCmd.PersistentFlags().StringP("address", "a", "", "HTTP server address: host:port")
 	rootCmd.PersistentFlags().StringP("base", "b", "", "base url for URL misc")
 	rootCmd.PersistentFlags().StringP("file", "f", "", "file storage path")
 	rootCmd.PersistentFlags().StringP("database", "d", "", "database DSN")
 	rootCmd.PersistentFlags().BoolP("https", "s", false, "enable HTTPS")
 	rootCmd.PersistentFlags().StringP("cert", "e", "", "cert PEM file for HTTPS")
 	rootCmd.PersistentFlags().StringP("key", "p", "", "key PEM file for HTTPS")
-	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "config file")
+	rootCmd.PersistentFlags().StringP("trusted", "t", "", "trusted subnet in CIDR format")
+	rootCmd.PersistentFlags().StringP("grpc", "g", "", "gRPC server address: host:port")
 
 	// bind flags.
 	for key, f := range map[string]string{
@@ -53,6 +64,8 @@ func init() {
 		"EnableHTTPS":     "https",
 		"CertPEMFile":     "cert",
 		"KeyPEMFile":      "key",
+		"TrustedSubnet":   "trusted",
+		"GRPCAddress":     "grpc",
 	} {
 		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(f)); err != nil {
 			log.Errorf("failed to bind flag %s. %s", f, err)
@@ -70,6 +83,8 @@ func init() {
 		"EnableHTTPS":     "ENABLE_HTTPS",
 		"CertPEMFile":     "CERT_PEM",
 		"KeyPEMFile":      "KEY_PEM",
+		"TrustedSubnet":   "TRUSTED_SUBNET",
+		"GRPCAddress":     "GRPC_ADDRESS",
 	} {
 		if err := viper.BindEnv(key, env); err != nil {
 			log.Errorf("failed to bind ENV variable %s. %s", env, err)
@@ -77,11 +92,12 @@ func init() {
 	}
 
 	// set default values.
-	viper.SetDefault("Address", "localhost:8080")
-	viper.SetDefault("AuthCookieName", "X-AUTH")
-	viper.SetDefault("AuthCookieKey", "gopher")
-	viper.SetDefault("CertPEMFile", "cert.pem")
-	viper.SetDefault("KeyPEMFile", "key.pem")
+	viper.SetDefault("Address", server.DefaultAddress)
+	viper.SetDefault("AuthCookieName", server.DefaultAuthCookieName)
+	viper.SetDefault("AuthCookieKey", server.DefaultAuthCookieKey)
+	viper.SetDefault("CertPEMFile", server.DefaultCertPEMFile)
+	viper.SetDefault("KeyPEMFile", server.DefaultKeyPEMFile)
+	viper.SetDefault("GRPCAddress", server.DefaultGRPCAddress)
 }
 
 func main() {
@@ -105,14 +121,18 @@ func main() {
 
 func rootRun(_ *cobra.Command, _ []string) {
 	config := server.NewConfig()
-	app, postgresRepository, memoryRepository, err := newApp(config)
+	app, err := newApp(config)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	go func() {
-		app.ListenAndServe()
+		app.http.ListenAndServe()
+	}()
+
+	go func() {
+		app.rpc.ListenAndServe()
 	}()
 
 	sigChan := make(chan os.Signal, 1)
@@ -122,19 +142,20 @@ func rootRun(_ *cobra.Command, _ []string) {
 		syscall.SIGQUIT)
 	<-sigChan
 
-	if err = app.Shutdown(); err != nil {
+	if err = app.http.Shutdown(); err != nil {
 		log.Errorf("failed to shutdown HTTP server gracefully. %s", err)
 	}
+	app.rpc.Shutdown()
 
-	if memoryRepository != nil {
-		if err = memoryRepository.Dump(context.Background()); err != nil {
+	if app.mem != nil {
+		if err = app.mem.Dump(context.Background()); err != nil {
 			fmt.Println(err)
 		}
-		memoryRepository.Close()
+		app.mem.Close()
 	}
 
-	if postgresRepository != nil {
-		postgresRepository.Close()
+	if app.postgres != nil {
+		app.postgres.Close()
 	}
 }
 
@@ -156,14 +177,20 @@ func initConfig() {
 	}
 }
 
-func newApp(cfg *server.Config) (server.Server, *storage.PostgresRepository, *storage.MemoryRepository, error) {
+func newApp(cfg *server.Config) (App, error) {
 	if len(cfg.DatabaseDSN) == 0 {
 		if len(cfg.FileStoragePath) == 0 {
 			mem := storage.NewMemoryRepository(
 				misc.Shorten,
 				misc.UUID,
 			)
-			return server.NewServer(mem, nil, cfg), nil, mem, nil
+			s := server.NewServer(mem, nil, cfg)
+
+			return App{
+				http: http.NewServer(&s),
+				rpc:  grpc.NewServer(&s),
+				mem:  mem,
+			}, nil
 		}
 
 		coolStorage, _ := storage.NewCoolStorage(cfg.FileStoragePath)
@@ -175,7 +202,13 @@ func newApp(cfg *server.Config) (server.Server, *storage.PostgresRepository, *st
 		if err := mem.Load(context.Background()); err != nil {
 			fmt.Println(err)
 		}
-		return server.NewServer(mem, nil, cfg), nil, mem, nil
+		s := server.NewServer(mem, nil, cfg)
+
+		return App{
+			http: http.NewServer(&s),
+			rpc:  grpc.NewServer(&s),
+			mem:  mem,
+		}, nil
 	}
 
 	pg, err := storage.NewPostgresRepository(
@@ -184,5 +217,11 @@ func newApp(cfg *server.Config) (server.Server, *storage.PostgresRepository, *st
 		misc.Shorten,
 		misc.UUID,
 	)
-	return server.NewServer(pg, pg, cfg), pg, nil, err
+	s := server.NewServer(pg, pg, cfg)
+
+	return App{
+		http:     http.NewServer(&s),
+		rpc:      grpc.NewServer(&s),
+		postgres: pg,
+	}, err
 }

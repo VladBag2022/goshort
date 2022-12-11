@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+package goshort;
+
+option go_package = "goshort/internal/proto";
+
+message ShortenRequest {
+  string origin = 1 [json_name="url"];
+}
+
+message ShortenResponse {
+  string result = 1;
+  bool existed = 2;
+}
+
+message DeleteRequest {
+  repeated string UrlIDs = 1;
+}
+
+message Entry {
+  string result = 1 [json_name="short_url"];
+  string origin = 2 [json_name="original_url"];
+}
+
+message Entries {
+  repeated Entry entries = 1;
+}
+
+message RestoreRequest {
+  string id = 1;
+}
+
+message RestoreResponse {
+  string origin = 1;
+  bool deleted = 2;
+}
+
+message BatchShortenRequestEntry {
+  string id = 1 [json_name="correlation_id"];
+  string origin = 2 [json_name="original_url"];
+}
+
+message BatchShortenResponseEntry {
+  string id = 1 [json_name="correlation_id"];
+  string result = 2 [json_name="short_url"];
+}
+
+message BatchShortenRequest {
+  repeated BatchShortenRequestEntry Entries = 1;
+}
+
+message BatchShortenResponse {
+  repeated BatchShortenResponseEntry Entries = 1;
+}
+
+message Stats {
+  int64 urls = 1;
+  int64 users = 2;
+}
+
+message RegisterResponse {
+  string token = 1;
+}
+
+service Shortener {
+  rpc Shorten(ShortenRequest) returns (ShortenResponse);
+  rpc Delete(DeleteRequest) returns (google.protobuf.Empty);
+  rpc List(google.protobuf.Empty) returns (Entries);
+  rpc Restore(RestoreRequest) returns (RestoreResponse);
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc ShortenBatch(BatchShortenRequest) returns (BatchShortenResponse);
+  rpc Register(google.protobuf.Empty) returns (RegisterResponse);
+}
